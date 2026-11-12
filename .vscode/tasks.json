@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "port",
+      "type": "promptString",
+      "description": "TinyScreen+ COM port (run 'Arduino: List boards' to find it)",
+      "default": "COM5"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Arduino: Compile",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": ["compile", "--fqbn", "TinyCircuits:samd:tinyscreen", "${fileDirname}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Arduino: Upload",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": ["compile", "--upload", "--fqbn", "TinyCircuits:samd:tinyscreen", "--port", "${input:port}", "${fileDirname}"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": "build",
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "Arduino: List boards",
+      "type": "shell",
+      "command": "arduino-cli board list",
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Serial monitor",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": ["monitor", "--port", "${input:port}", "--config", "baudrate=9600"],
+      "problemMatcher": []
+    }
+  ]
+}
