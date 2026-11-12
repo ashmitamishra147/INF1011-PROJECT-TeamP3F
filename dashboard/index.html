@@ -1,0 +1,1613 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0d">
+<title>Plant Guardian</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-2: #f0efec;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+    --mood-happy: #008300;
+    --mood-thirsty: #eda100;
+    --mood-cold: #2a78d6;
+    --mood-sleepy: #e87ba4;
+    --mood-soggy: #1baf7a;
+    --accent: #2a78d6;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-2: #262624;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --mood-happy: #008300;
+      --mood-thirsty: #c98500;
+      --mood-cold: #3987e5;
+      --mood-sleepy: #d55181;
+      --mood-soggy: #199e70;
+      --accent: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #262624;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255,255,255,0.10);
+    --series-1: #3987e5;
+    --mood-happy: #008300;
+    --mood-thirsty: #c98500;
+    --mood-cold: #3987e5;
+    --mood-sleepy: #d55181;
+    --mood-soggy: #199e70;
+    --accent: #3987e5;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--page);
+    color: var(--text-primary);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 16px 16px 40px; }
+
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    justify-content: space-between; margin-bottom: 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand svg { flex: none; }
+  .brand h1 { font-size: 19px; margin: 0; letter-spacing: -0.01em; }
+  .brand p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+
+  .seg {
+    display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px;
+    border: 1px solid var(--border);
+  }
+  .seg button {
+    appearance: none; border: 0; background: transparent; color: var(--text-secondary);
+    font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 8px; cursor: pointer;
+    min-height: 36px;
+  }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text-primary); box-shadow: 0 1px 2px rgba(0,0,0,.12); font-weight: 600; }
+  .seg button:focus-visible, .btn:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .status-line {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+    color: var(--text-secondary); font-size: 13px; margin-bottom: 14px;
+  }
+  .pill { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+  .dot.live { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+  .dot.sim { background: var(--accent); }
+  .dot.stale { background: var(--warning); }
+  .note { color: var(--text-muted); }
+
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px;
+  }
+  .controls[hidden] { display: none; }
+  .btn {
+    appearance: none; font: inherit; font-size: 14px; color: var(--text-primary);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 7px 12px; min-height: 36px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  select {
+    font: inherit; font-size: 14px; color: var(--text-primary); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; min-height: 36px;
+  }
+  input[type="text"], input[type="number"] {
+    font: inherit; font-size: 14px; color: var(--text-primary); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 7px 10px; min-height: 36px;
+  }
+  input[type="number"] { width: 72px; }
+  input[type="text"] { width: min(260px, 60vw); }
+  input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .plant-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .plant-info { margin: 12px 0 0; font-size: 13px; color: var(--text-secondary); }
+  .plant-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+  .plant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .plant-note { margin-top: 8px; color: var(--text-muted); }
+  .plant-tune { margin-top: 10px; color: var(--text-secondary); font-size: 13px; }
+  .plant-tune summary { cursor: pointer; margin-bottom: 10px; }
+  label.inline { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 13px; }
+
+  .grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 760px) {
+    .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+    .span-3 { grid-column: span 3; }
+    .span-2 { grid-column: span 2; }
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; min-width: 0;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--text-secondary); font-weight: 600; }
+
+  .hero { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+  @media (min-width: 640px) { .hero { grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); } }
+  .device {
+    background: #161616; border-radius: 18px; padding: 14px 14px 10px;
+    box-shadow: inset 0 0 0 2px #2a2a2a, 0 6px 18px rgba(0,0,0,.18);
+    max-width: 360px; width: 100%; margin: 0 auto;
+  }
+  .device canvas {
+    display: block; width: 100%; aspect-ratio: 96 / 56; background: #000; border-radius: 6px;
+    image-rendering: pixelated; image-rendering: crisp-edges;
+  }
+  .device canvas[hidden], .device .scene[hidden] { display: none; }
+  .scene { container-type: inline-size; position: relative; width: 100%; aspect-ratio: 1024 / 765; border-radius: 6px; overflow: hidden; background: #0a1026; }
+  .scene img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .scene-layer { filter: grayscale(1) brightness(.3); clip-path: inset(0 0 100% 0); }
+  .scene-ok {
+    position: absolute; left: 10%; top: 86.2%; width: 77.5%; height: 7.8%; background: #0a1026;
+    display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden;
+    font: 700 4.4cqw/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em;
+  }
+  .linkbtn { background: none; border: 0; padding: 0; color: #9ab; font: inherit; text-decoration: underline; cursor: pointer; }
+  .device .cap { color: #8a8a8a; font-size: 11px; text-align: center; margin-top: 8px; letter-spacing: .04em; }
+  .mood-label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  .swatch.hatch {
+    background: repeating-linear-gradient(45deg, currentColor 0 2px, transparent 2px 4px);
+    box-shadow: inset 0 0 0 1.5px currentColor;
+  }
+  .mood-name { font-size: 34px; font-weight: 700; margin: 2px 0 6px; letter-spacing: -0.02em; line-height: 1.1; }
+  .bubble {
+    position: relative; background: var(--surface-2); border-radius: 12px; padding: 10px 14px;
+    font-size: 16px; margin: 6px 0 12px;
+  }
+  .reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 10px;
+    border-radius: 999px; background: var(--surface-2); color: var(--text-primary);
+  }
+
+  .tile .label { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px; font-weight: 600; }
+  .tile .value { font-size: 30px; font-weight: 700; margin: 6px 0 2px; letter-spacing: -0.02em; }
+  .tile .value small { font-size: 15px; color: var(--text-secondary); font-weight: 500; margin-left: 2px; }
+  .tile .sub { color: var(--text-muted); font-size: 12px; }
+  .vrow { display: flex; align-items: center; gap: 12px; margin: 6px 0 2px; }
+  .vrow .value { margin: 0; }
+  .vicon { height: 46px; width: auto; flex: none; transition: filter .3s; }
+  .chip-icon { height: 20px; width: auto; flex: none; transition: filter .3s; }
+  .micon { height: 18px; width: auto; vertical-align: -4px; margin-right: 6px; }
+  .vicon.off, .chip-icon.off { filter: grayscale(.75) brightness(.6); }
+  .status-ico { display: inline-flex; }
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .status svg { flex: none; }
+  .meter { position: relative; height: 8px; background: var(--surface-2); border-radius: 4px; margin: 10px 0 6px; }
+  .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; transition: width .4s ease; }
+  .meter .tick { position: absolute; top: -3px; width: 2px; height: 14px; background: var(--text-primary); border-radius: 1px; }
+  .spark { display: block; width: 100%; height: 30px; margin-top: 6px; }
+
+  .predict .value { font-size: 26px; }
+
+  .chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .chart-head h2 { margin: 0; }
+  .chart-box { position: relative; width: 100%; }
+  .chart-box svg { display: block; width: 100%; touch-action: pan-y; }
+  .chart-box svg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  .tooltip {
+    position: absolute; pointer-events: none; background: var(--surface); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 13px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.14); min-width: 120px; opacity: 0; transition: opacity .12s;
+    z-index: 2;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .t-time { color: var(--text-secondary); font-size: 12px; }
+  .tooltip .t-val { font-weight: 700; font-size: 16px; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+  .tooltip .key { width: 12px; height: 3px; border-radius: 2px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: 13px; color: var(--text-secondary); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .empty { color: var(--text-muted); font-size: 14px; padding: 30px 0; text-align: center; }
+
+  ul.log { list-style: none; margin: 0; padding: 0; }
+  ul.log li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--grid); font-size: 14px; }
+  ul.log li:first-child { border-top: 0; }
+  ul.log time { color: var(--text-muted); font-variant-numeric: tabular-nums; min-width: 44px; }
+  .activity { max-height: 520px; overflow-y: auto; }
+  @media (max-width: 759px) { .activity { max-height: none; overflow: visible; } }
+  .act-day + .act-day { margin-top: 14px; }
+  .act-day h3 {
+    display: flex; align-items: baseline; gap: 8px; margin: 0 0 4px; padding: 6px 0;
+    font-size: 14px; font-weight: 700; position: sticky; top: 0; background: var(--surface);
+    border-bottom: 1px solid var(--grid); z-index: 1;
+  }
+  .act-day h3 span { color: var(--text-muted); font-weight: 500; font-size: 13px; }
+  .act-day h3 em { margin-left: auto; font-style: normal; color: var(--text-muted); font-weight: 500; font-size: 12px; }
+  ul.acts { list-style: none; margin: 0; padding: 0; }
+  ul.acts li {
+    display: grid; grid-template-columns: 48px 18px minmax(0, 1fr); gap: 10px; align-items: start;
+    padding: 9px 0; border-top: 1px solid var(--grid);
+  }
+  ul.acts li:first-child { border-top: 0; }
+  ul.acts time { color: var(--text-secondary); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; }
+  ul.acts .ic { display: inline-flex; justify-content: center; padding-top: 3px; }
+  ul.acts .ev-title { font-size: 14px; font-weight: 600; }
+  ul.acts .ev-detail { font-size: 13px; color: var(--text-secondary); }
+  details summary { cursor: pointer; color: var(--text-secondary); font-size: 14px; font-weight: 600; }
+  .table-wrap { overflow-x: auto; margin-top: 10px; max-height: 320px; overflow-y: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  th:first-child, td:first-child, th:last-child, td:last-child { text-align: left; }
+  th { color: var(--text-secondary); font-weight: 600; position: sticky; top: 0; background: var(--surface); }
+
+  .footer { color: var(--text-muted); font-size: 12px; margin-top: 18px; }
+  .footer code { font-size: 12px; }
+  .err { color: var(--critical); font-size: 13px; }
+
+  @media (forced-colors: active) {
+    .meter .fill, .swatch, .key { forced-color-adjust: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .meter .fill { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+        <rect x="6" y="9" width="22" height="16" rx="3" fill="var(--mood-happy)"/>
+        <rect x="11" y="14" width="3" height="4" fill="#000"/><rect x="20" y="14" width="3" height="4" fill="#000"/>
+        <path d="M12 20 q5 4 10 0" stroke="#000" stroke-width="1.6" fill="none"/>
+        <path d="M17 9 V4 M17 6 l-5 -2 M17 5 l5 -3" stroke="var(--mood-happy)" stroke-width="2" fill="none" stroke-linecap="round"/>
+        <path d="M8 26 h18 l-2 6 h-14z" fill="#a0672e"/>
+      </svg>
+      <div>
+        <h1>Plant Guardian</h1>
+        <p id="subTitle">Your plant, as a pet</p>
+      </div>
+    </div>
+    <div class="seg" role="group" aria-label="Data source">
+      <button type="button" id="srcSim" aria-pressed="true">Simulation</button>
+      <button type="button" id="srcLive" aria-pressed="false">Live device</button>
+    </div>
+  </header>
+
+  <div class="status-line">
+    <span class="pill"><span class="dot sim" id="srcDot"></span><span id="srcText">Simulated data</span></span>
+    <span id="lastUpdate" class="note"></span>
+    <span id="serialNote" class="note"></span>
+    <span id="errMsg" class="err" role="alert"></span>
+  </div>
+
+  <div class="controls" id="simControls">
+    <button type="button" class="btn" id="playBtn" aria-pressed="false">
+      <svg id="playIcon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="3" y="2" width="3" height="10" fill="currentColor"/><rect x="8" y="2" width="3" height="10" fill="currentColor"/></svg>
+      <span id="playText">Pause</span>
+    </button>
+    <label class="inline">Mode
+      <select id="modeSel">
+        <option value="0">48-hour timeline</option>
+        <option value="1">Force: Happy</option>
+        <option value="2">Force: Thirsty</option>
+        <option value="3">Force: Cold</option>
+        <option value="4">Force: Sleepy</option>
+        <option value="5">Force: Soggy (over-watered)</option>
+      </select>
+    </label>
+    <label class="inline">Speed
+      <select id="speedSel">
+        <option value="1">1× (like device)</option>
+        <option value="4">4×</option>
+        <option value="10">10×</option>
+      </select>
+    </label>
+    <button type="button" class="btn" id="resetBtn">Restart day</button>
+  </div>
+
+  <div class="controls" id="liveControls" hidden>
+    <button type="button" class="btn primary" id="connectBtn">Connect TinyScreen+</button>
+    <button type="button" class="btn" id="disconnectBtn" hidden>Disconnect</button>
+  </div>
+
+  <main class="grid">
+
+    <section class="card span-6" aria-labelledby="plantHead">
+      <h2 id="plantHead">My plant</h2>
+      <div class="plant-row">
+        <label class="inline">What plant do you have?
+          <input id="plantInput" type="text" list="plantList" placeholder="e.g. Monstera, cactus, basil" autocomplete="off" maxlength="40">
+        </label>
+        <datalist id="plantList"></datalist>
+        <button type="button" class="btn primary" id="plantApply">Apply</button>
+        <button type="button" class="btn" id="plantReset">Reset</button>
+      </div>
+      <p class="note plant-info" id="plantInfo" aria-live="polite"></p>
+      <details class="plant-tune">
+        <summary>Fine-tune the limits</summary>
+        <div class="plant-row">
+          <label class="inline">Thirsty below <input id="limSoilLo" type="number" min="0" max="100" step="1"> %</label>
+          <label class="inline">Soggy above <input id="limSoilHi" type="number" min="0" max="100" step="1"> %</label>
+          <label class="inline">Cold below <input id="limTemp" type="number" min="0" max="40" step="1"> °C</label>
+          <label class="inline">Sleepy below <input id="limLux" type="number" min="1" max="1000" step="10"> lx</label>
+          <button type="button" class="btn" id="plantCustom">Save custom limits</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="card span-6" aria-labelledby="moodName">
+      <div class="hero">
+        <div class="device">
+          <div class="scene" id="scene" role="img" aria-label="Plant buddy picture">
+            <img class="scene-base" src="assets/plantguardian-clean.png" alt="">
+            <img class="scene-layer" data-k="moisture" src="assets/layer-moisture.png" alt="">
+            <img class="scene-layer" data-k="temperature" src="assets/layer-temperature.png" alt="">
+            <img class="scene-layer" data-k="light" src="assets/layer-light.png" alt="">
+            <div class="scene-ok" id="sceneOk"></div>
+          </div>
+          <canvas id="pet" width="96" height="56" role="img" aria-label="Pixel-art plant face" hidden></canvas>
+          <div class="cap"><span id="devCap">TINYSCREEN+ · BUDDY</span> · <button type="button" class="linkbtn" id="viewToggle">show face</button></div>
+        </div>
+        <div>
+          <span class="mood-label"><span class="swatch" id="moodSwatch"></span>Current mood <span id="moodSince" class="note"></span></span>
+          <div class="mood-name" id="moodName">—</div>
+          <div class="bubble" id="moodMsg" aria-live="polite">Waiting for the first reading…</div>
+          <div class="reasons" id="reasons"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card tile span-2" id="tileSoil"></section>
+    <section class="card tile span-2" id="tileTemp"></section>
+    <section class="card tile span-2" id="tileLight"></section>
+
+    <section class="card span-4">
+      <div class="chart-head">
+        <h2 id="chartTitle">History</h2>
+        <div class="seg" role="group" aria-label="Chart metric">
+          <button type="button" data-metric="moisture" aria-pressed="true">Soil</button>
+          <button type="button" data-metric="temp" aria-pressed="false">Temp</button>
+          <button type="button" data-metric="lux" aria-pressed="false">Light</button>
+        </div>
+      </div>
+      <div class="chart-box" id="chartBox">
+        <div class="tooltip" id="tooltip" role="status"></div>
+      </div>
+      <div class="legend" id="moodLegend" aria-label="Mood colors"></div>
+    </section>
+
+    <section class="card span-2">
+      <div class="predict tile">
+        <div class="label">Next watering</div>
+        <div class="value" id="predValue">—</div>
+        <div class="sub" id="predSub">Needs a few readings to estimate</div>
+      </div>
+      <hr style="border:0;border-top:1px solid var(--grid);margin:16px 0 12px">
+      <div class="predict tile">
+        <div class="label">Last watered</div>
+        <div class="value" id="waterValue">—</div>
+        <div class="sub" id="waterSub">No watering detected yet</div>
+        <ul class="log" id="waterList" style="margin-top:8px"></ul>
+      </div>
+    </section>
+
+    <section class="card span-6">
+      <div class="chart-head">
+        <h2>Activity log</h2>
+        <div class="seg" role="group" aria-label="Filter activity">
+          <button type="button" data-act="all" aria-pressed="true">All</button>
+          <button type="button" data-act="water" aria-pressed="false">Watering</button>
+          <button type="button" data-act="mood" aria-pressed="false">Mood</button>
+        </div>
+      </div>
+      <div id="activity" class="activity"></div>
+    </section>
+
+    <section class="card span-6">
+      <details>
+        <summary>All readings (table)</summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Day</th><th>Time</th><th>Soil %</th><th>Temp °C</th><th>Light lx</th><th>Mood</th></tr></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <p class="footer">
+    Mood rules (same as the device): soil above 80% → Soggy (over-watered), soil below 30% → Thirsty, else below 18 °C → Cold, else below 100 lx → Sleepy, else Happy.
+    Live mode reads the CSV lines the sketch prints over USB at 9600 baud (<code>time,moisture,temp,lux,mood</code>) and needs Chrome or Edge on a computer.
+  </p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const PLANT_TYPES = [
+    { id: 'general',   label: 'General houseplant', words: ['general', 'houseplant', 'default'],    soil: [30, 80], temp: 18, lux: 100 },
+    { id: 'succulent', label: 'Succulent / cactus', words: ['succulent', 'cactus', 'cacti', 'aloe', 'jade', 'echeveria', 'haworthia'], soil: [10, 50], temp: 10, lux: 500 },
+    { id: 'snake',     label: 'Snake plant',        words: ['snake', 'sansevieria', 'mother-in-law'], soil: [15, 55], temp: 13, lux: 50 },
+    { id: 'pothos',    label: 'Pothos',             words: ['pothos', 'devil', 'epipremnum'],        soil: [30, 70], temp: 15, lux: 100 },
+    { id: 'monstera',  label: 'Monstera',           words: ['monstera', 'swiss cheese'],             soil: [35, 75], temp: 18, lux: 200 },
+    { id: 'peace',     label: 'Peace lily',         words: ['peace', 'lily', 'spathiphyllum'],       soil: [50, 90], temp: 16, lux: 100 },
+    { id: 'fern',      label: 'Fern',               words: ['fern', 'boston', 'maidenhair'],         soil: [50, 90], temp: 16, lux: 100 },
+    { id: 'orchid',    label: 'Orchid',             words: ['orchid', 'phalaenopsis'],               soil: [25, 60], temp: 16, lux: 200 },
+    { id: 'herb',      label: 'Herb (basil, mint)', words: ['herb', 'basil', 'mint', 'parsley', 'cilantro', 'rosemary'], soil: [40, 80], temp: 18, lux: 500 },
+    { id: 'tomato',    label: 'Tomato / vegetable', words: ['tomato', 'vegetable', 'pepper', 'chili', 'lettuce'], soil: [50, 85], temp: 15, lux: 800 },
+  ];
+  function loadPlant() {
+    try {
+      const p = JSON.parse(localStorage.getItem('pg.plant') || 'null');
+      if (p && Array.isArray(p.soil) && [p.soil[0], p.soil[1], p.temp, p.lux].every(Number.isFinite)) return p;
+    } catch (_) {}
+    return null;
+  }
+  const savedPlant = loadPlant();
+  const PLANT = savedPlant || { name: '', soil: PLANT_TYPES[0].soil, temp: PLANT_TYPES[0].temp, lux: PLANT_TYPES[0].lux, typeId: 'general' };
+  const MOISTURE_THIRSTY = PLANT.soil[0], MOISTURE_SOGGY = PLANT.soil[1], TEMP_COLD = PLANT.temp, LIGHT_DARK = PLANT.lux;
+  const SENSOR_INTERVAL_MS = 2000, ANIM_INTERVAL_MS = 350;
+  const HISTORY_MAX = 96;
+  const WATER_JUMP = 15;
+  const MOODS = ['HAPPY', 'THIRSTY', 'COLD', 'SLEEPY', 'SOGGY'];
+  const MOOD_INFO = {
+    HAPPY:   { name: 'Happy',   var: '--mood-happy' },
+    THIRSTY: { name: 'Thirsty', var: '--mood-thirsty' },
+    COLD:    { name: 'Cold',    var: '--mood-cold' },
+    SLEEPY:  { name: 'Sleepy',  var: '--mood-sleepy' },
+    SOGGY:   { name: 'Soggy',   var: '--mood-soggy' },
+  };
+
+  const TIMELINE = [
+    [360,50,18.3,120],[390,49,18.8,219],[420,48,19.2,316],[450,47,19.8,411],
+    [480,46,20.3,502],[510,45,20.9,588],[540,44,21.5,669],[570,43,22.1,742],
+    [600,42,22.7,808],[630,41,23.2,865],[660,40,23.8,913],[690,39,24.2,951],
+    [720,38,24.7,978],[750,37,25.1,994],[780,36,25.4,1000],[810,35,25.7,994],
+    [840,34,25.8,978],[870,33,26.0,951],[900,32,26.0,913],[930,31,26.0,865],
+    [960,30,25.8,808],[990,29,25.7,742],[1020,28,25.4,669],[1050,27,25.1,588],
+    [1080,26,24.7,502],[1110,25,24.2,411],[1140,24,23.8,316],[1170,23,23.2,219],
+    [1200,22,22.7,1],[1230,21,22.1,2],[1260,62,21.5,4],[1290,62,20.9,7],
+    [1320,61,20.3,7],[1350,61,19.8,4],[1380,61,19.2,1],[1410,60,18.8,1],
+    [0,60,18.3,4],[30,60,17.9,6],[60,59,17.6,7],[90,59,17.3,5],
+    [120,59,17.2,2],[150,58,17.0,1],[180,58,17.0,3],[210,57,17.0,6],
+    [240,57,17.2,7],[270,57,17.3,6],[300,56,17.6,3],[330,56,17.9,1],
+    [360,56,18.3,120],[390,55,18.8,219],[420,54,19.2,316],[450,53,19.8,411],
+    [480,52,20.3,502],[510,51,20.9,588],[540,50,21.5,669],[570,49,22.1,742],
+    [600,48,22.7,808],[630,47,23.2,865],[660,47,23.8,913],[690,46,24.2,951],
+    [720,45,24.7,978],[750,44,25.1,994],[780,43,25.4,1000],[810,42,25.7,994],
+    [840,41,25.8,978],[870,40,26.0,951],[900,39,26.0,913],[930,38,26.0,865],
+    [960,37,25.8,808],[990,36,25.7,742],[1020,35,25.4,669],[1050,34,25.1,588],
+    [1080,33,24.7,502],[1110,32,24.2,411],[1140,31,23.8,316],[1170,30,23.2,219],
+    [1200,29,22.7,1],[1230,28,22.1,2],[1260,94,21.5,4],[1290,94,20.9,7],
+    [1320,93,20.3,7],[1350,93,19.8,4],[1380,92,19.2,1],[1410,92,18.8,1],
+    [0,92,18.3,4],[30,91,17.9,6],[60,91,17.6,7],[90,90,17.3,5],
+    [120,90,17.2,2],[150,90,17.0,1],[180,89,17.0,3],[210,89,17.0,6],
+    [240,88,17.2,7],[270,88,17.3,6],[300,88,17.6,3],[330,87,17.9,1],
+  ];
+  const PRESETS = [[55,23.0,600],[18,24.0,700],[60,14.5,400],[60,21.0,3],[92,22.0,600]];
+
+  const computeMood = (m, t, l) =>
+    m > MOISTURE_SOGGY ? 'SOGGY' : m < MOISTURE_THIRSTY ? 'THIRSTY' : t < TEMP_COLD ? 'COLD' : l < LIGHT_DARK ? 'SLEEPY' : 'HAPPY';
+
+  function paintMood(node, mood) {
+    node.classList.toggle('hatch', mood === 'SOGGY');
+    node.style.color = `var(${MOOD_INFO[mood].var})`;
+    node.style.background = mood === 'SOGGY' ? '' : `var(${MOOD_INFO[mood].var})`;
+  }
+
+  const $ = (id) => document.getElementById(id);
+  const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const fmtClock = (min) => {
+    min = ((Math.round(min) % 1440) + 1440) % 1440;
+    return String(Math.floor(min / 60)).padStart(2, '0') + ':' + String(min % 60).padStart(2, '0');
+  };
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs = {}, parent) => {
+    const n = document.createElementNS(svgNS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+
+  let source = 'sim';
+  let history = [];
+  let moodLog = [];
+  let actFilter = 'all';
+  let actSeq = 0;
+  let waterings = [];
+  let metric = 'moisture';
+  let hoverIdx = null;
+
+  const canvas = $('pet');
+  const ctx = canvas.getContext('2d');
+  const OX = 0, OY = 8;
+
+  const SPRITES = /*SPRITES_BEGIN*/{
+    moisture: [0,0,0,0,0,0,105,105,0,0,0,0,0,0,0,0,0,0,0,105,177,177,105,0,0,0,0,0,0,0,0,0,105,177,249,249,177,137,0,0,0,0,0,0,0,137,177,249,249,250,250,177,137,0,0,0,0,0,0,173,249,249,249,249,254,250,177,105,0,0,0,0,137,213,254,249,249,249,250,255,217,141,0,0,0,105,177,217,249,249,249,249,249,250,249,177,105,0,0,137,213,217,213,217,249,249,249,213,213,213,141,0,0,141,213,213,141,213,213,213,213,141,213,213,141,0,0,137,213,214,218,249,213,177,249,217,214,213,141,0,0,105,177,213,217,249,249,249,249,249,245,177,105,0,0,0,141,213,213,213,213,213,213,213,213,141,0,0,0,0,0,141,209,213,213,213,213,213,141,0,0,0,0,0,0,0,137,173,173,173,173,137,0,0,0,0],
+    temperature: [0,0,0,0,0,177,214,177,0,0,0,0,0,0,0,0,0,0,0,218,218,218,145,0,0,0,0,0,0,0,0,0,145,218,250,218,145,0,0,0,0,0,0,0,0,0,145,218,250,218,145,0,0,0,0,0,0,0,0,0,145,218,250,218,145,0,0,0,0,0,0,0,0,0,145,183,87,151,145,0,0,0,0,0,0,0,0,0,145,183,87,151,145,0,0,0,0,0,0,0,0,0,145,183,87,151,145,0,0,0,0,0,0,0,0,0,182,151,87,119,182,0,0,0,0,0,0,0,0,178,151,123,87,87,151,177,0,0,0,0,0,0,0,214,119,87,87,87,115,214,0,0,0,0,0,0,0,182,119,87,87,87,115,182,0,0,0,0,0,0,0,0,218,119,83,119,218,0,0,0,0,0,0,0,0,0,0,178,214,182,0,0,0,0,0,0],
+    light: [0,0,0,0,0,0,87,87,0,0,0,0,0,0,0,0,0,0,0,0,87,87,0,0,0,0,0,0,0,0,87,83,0,0,0,0,0,0,82,87,0,0,0,0,83,83,82,119,91,91,87,82,83,87,0,0,0,0,0,82,123,159,123,91,91,91,82,0,0,0,0,0,0,87,123,91,91,91,91,91,87,0,0,0,82,87,0,91,87,82,91,91,82,87,87,0,87,87,82,87,0,91,115,123,86,86,123,115,87,0,87,87,0,0,0,87,91,91,91,91,91,91,87,0,0,0,0,0,0,82,87,91,91,91,91,87,82,0,0,0,0,0,82,82,82,87,87,87,87,82,82,82,0,0,0,0,87,87,0,0,0,0,0,0,82,87,0,0,0,0,0,0,0,0,87,87,0,0,0,0,0,0,0,0,0,0,0,0,87,87,0,0,0,0,0,0]
+  }/*SPRITES_END*/;
+  const SPRITE_SIZE = 14;
+
+  const ICON_FILES = { moisture: 'assets/icon-moisture.png', temperature: 'assets/icon-temperature.png', light: 'assets/icon-light.png' };
+  const ICON_IMGS = {};
+  Object.keys(ICON_FILES).forEach((k) => { const im = new Image(); im.src = ICON_FILES[k]; im.alt = ''; ICON_IMGS[k] = im; });
+  function iconImg(name, off, cls) {
+    const im = ICON_IMGS[name].cloneNode();
+    im.className = cls + (off ? ' off' : '');
+    im.setAttribute('aria-hidden', 'true');
+    return im;
+  }
+  const rgb8 = (r, g, b) => `rgb(${Math.round(r * 255 / 3)},${Math.round(g * 255 / 7)},${Math.round(b * 255 / 7)})`;
+  const C = {
+    bg: '#000', face: '#000', text: '#fff', muted: rgb8(1, 3, 3),
+    leaf: rgb8(0, 3, 0), leafRot: rgb8(1, 3, 0), pot: rgb8(2, 4, 1), potRim: rgb8(2, 0, 1),
+    cheek: rgb8(3, 2, 5), water: rgb8(1, 6, 7),
+  };
+  const HEAD_COLOR = {
+    HAPPY: rgb8(0, 7, 0), THIRSTY: rgb8(3, 5, 0), COLD: rgb8(1, 5, 7), SLEEPY: rgb8(0, 3, 1), SOGGY: rgb8(0, 4, 4),
+  };
+
+  const px = (x, y, c) => { ctx.fillStyle = c; ctx.fillRect(x - OX, y - OY, 1, 1); };
+  const rect = (x, y, w, h, c, fill = true) => {
+    ctx.fillStyle = c;
+    if (fill) { ctx.fillRect(x - OX, y - OY, w, h); return; }
+    ctx.fillRect(x - OX, y - OY, w, 1); ctx.fillRect(x - OX, y + h - 1 - OY, w, 1);
+    ctx.fillRect(x - OX, y - OY, 1, h); ctx.fillRect(x + w - 1 - OX, y - OY, 1, h);
+  };
+  const line = (x0, y0, x1, y1, c) => {
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    for (;;) {
+      px(x0, y0, c);
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+  };
+  const glyph = (rows, x, y, c) => rows.forEach((r, j) => [...r].forEach((b, i) => { if (b === '1') px(x + i, y + j, c); }));
+  const Z_SMALL = ['111', '010', '111'];
+  const Z_BIG = ['1111', '0010', '0100', '1000', '1111'];
+
+  function drawSprite(x, y, data, dim) {
+    for (let j = 0; j < SPRITE_SIZE; j++) for (let i = 0; i < SPRITE_SIZE; i++) {
+      let v = data[j * SPRITE_SIZE + i];
+      if (!v) continue;
+      if (dim) v = ((v & 0xC0) >> 1) | ((v & 0x18) >> 1) | ((v >> 1) & 1);
+      px(x + i, y + j, `rgb(${(v & 3) * 85},${Math.round(((v >> 2) & 7) * 255 / 7)},${Math.round(((v >> 5) & 7) * 255 / 7)})`);
+    }
+  }
+  function drawGauges() {
+    const r = history[history.length - 1];
+    if (!r) return;
+    const rows = [
+      [SPRITES.moisture, r.moisture / 100, r.moisture >= MOISTURE_THIRSTY && r.moisture <= MOISTURE_SOGGY, r.moisture > MOISTURE_SOGGY],
+      [SPRITES.temperature, r.temp / 40, r.temp >= TEMP_COLD, false],
+      [SPRITES.light, Math.log10(r.lux + 1) / 3, r.lux >= LIGHT_DARK, false],
+    ];
+    rows.forEach(([spr, frac, ok, wet], i) => {
+      const y = 12 + i * 17;
+      const g = canvas.getContext('2d');
+      g.fillStyle = ok ? '#e8e8e8' : (wet ? '#2dd4bf' : '#ff3b30');
+      g.font = 'bold 6px monospace'; g.textBaseline = 'top';
+      g.fillText('STL'[i], 3, y + 3);
+      const fh = Math.floor(Math.max(0, Math.min(1, frac)) * SPRITE_SIZE);
+      rect(19, y, 4, SPRITE_SIZE, rgb8(1, 1, 1));
+      if (fh) rect(19, y + SPRITE_SIZE - fh, 4, fh, ok ? rgb8(0, 7, 0) : (wet ? HEAD_COLOR.SOGGY : rgb8(3, 0, 0)));
+    });
+  }
+
+  function drawPet(mood, frame) {
+    const hc = HEAD_COLOR[mood];
+    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const leaf = mood === 'SOGGY' ? C.leafRot : C.leaf;
+    line(48, 11, 48, 17, leaf);
+    if (mood === 'THIRSTY' || mood === 'SOGGY') {
+      line(47, 12, 41, 16, leaf); line(47, 13, 42, 17, leaf);
+      line(49, 12, 55, 16, leaf); line(49, 13, 54, 17, leaf);
+    } else {
+      rect(41, 13, 6, 3, leaf); rect(49, 11, 6, 3, leaf);
+    }
+    rect(30, 18, 36, 28, hc);
+    px(30, 18, C.bg); px(65, 18, C.bg); px(30, 45, C.bg); px(65, 45, C.bg);
+    if (mood === 'HAPPY') { rect(34, 33, 3, 2, C.cheek); rect(59, 33, 3, 2, C.cheek); }
+    rect(32, 47, 32, 4, C.potRim);
+    for (let i = 0; i < 10; i++) line(34 + Math.floor(i / 3), 51 + i, 61 - Math.floor(i / 3), 51 + i, C.pot);
+    if (mood === 'SOGGY') rect(24, 61, 48, 3, C.water);
+
+    if (mood === 'HAPPY') {
+      if (frame % 14 === 0) { line(39, 28, 42, 28, C.face); line(54, 28, 57, 28, C.face); }
+      else { rect(39, 25, 4, 5, C.face); rect(54, 25, 4, 5, C.face); px(40, 26, C.text); px(55, 26, C.text); }
+    } else if (mood === 'THIRSTY') {
+      rect(39, 28, 4, 3, C.face); rect(54, 28, 4, 3, C.face);
+      line(37, 26, 42, 24, C.face); line(54, 24, 59, 26, C.face);
+    } else if (mood === 'COLD') {
+      line(39, 25, 42, 27, C.face); line(42, 27, 39, 29, C.face);
+      line(57, 25, 54, 27, C.face); line(54, 27, 57, 29, C.face);
+    } else if (mood === 'SOGGY') {
+      rect(38, 24, 6, 6, C.text); rect(53, 24, 6, 6, C.text);
+      rect(40, 27, 2, 3, C.face); rect(55, 27, 2, 3, C.face);
+    } else {
+      line(39, 29, 42, 29, C.face); px(38, 28, C.face); px(43, 28, C.face);
+      line(54, 29, 57, 29, C.face); px(53, 28, C.face); px(58, 28, C.face);
+    }
+
+    if (mood === 'HAPPY') {
+      line(43, 35, 45, 37, C.face); line(45, 37, 51, 37, C.face); line(51, 37, 53, 35, C.face);
+    } else if (mood === 'THIRSTY') {
+      line(43, 39, 45, 37, C.face); line(45, 37, 51, 37, C.face); line(51, 37, 53, 39, C.face);
+    } else if (mood === 'COLD') {
+      let pxx = 42, pyy = 37;
+      for (let x = 44; x <= 54; x += 2) {
+        const y = ((x / 2 + frame) & 1) ? 35 : 38;
+        line(pxx, pyy, x, y, C.face); pxx = x; pyy = y;
+      }
+    } else if (mood === 'SOGGY') {
+      rect(45, 35, 7, 5, C.face);
+    } else {
+      rect(47, 36, 3, 3, C.face, false);
+    }
+
+    if (mood === 'THIRSTY') {
+      const y = 18 + (frame % 6) * 4;
+      px(69, y, C.water); rect(68, y + 1, 3, 3, C.water);
+    } else if (mood === 'COLD') {
+      const off = (frame & 1) ? 0 : 2, h = off / 2;
+      line(26 + h, 22 + off, 26 + h, 28 + off, C.water); line(26 + h, 32 + off, 26 + h, 38 + off, C.water);
+      line(69 - h, 22 + off, 69 - h, 28 + off, C.water); line(69 - h, 32 + off, 69 - h, 38 + off, C.water);
+    } else if (mood === 'SLEEPY') {
+      const step = frame % 4;
+      glyph(Z_SMALL, 70, 34 - step * 3 + 5, C.muted);
+      if (step >= 1) glyph(Z_SMALL, 77, 28 - step * 3 + 5, C.muted);
+      if (step >= 2) glyph(Z_BIG, 84, 22 - step * 3 + 3, C.text);
+    } else if (mood === 'SOGGY') {
+      const yl = 16 + (frame % 7) * 6, yr = 16 + ((frame + 3) % 7) * 6;
+      px(27, yl, C.water); rect(26, yl + 1, 3, 3, C.water);
+      px(69, yr, C.water); rect(68, yr + 1, 3, 3, C.water);
+      line(26 + (frame * 7) % 40, 62, 31 + (frame * 7) % 40, 62, C.text);
+    }
+    drawGauges();
+  }
+
+  let animFrame = 0;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setInterval(() => {
+    if (!reduceMotion) animFrame++;
+    drawPet(currentMood(), animFrame);
+  }, ANIM_INTERVAL_MS);
+
+  const currentMood = () => history.length ? history[history.length - 1].mood : 'HAPPY';
+
+  function addReading(r, silent = false) {
+    const prev = history[history.length - 1];
+    r.hours = prev ? prev.hours + stepHours(prev, r) : 0;
+    r.day = prev ? prev.day + (r.clock < prev.clock ? 1 : 0) : 0;
+    history.push(r);
+    if (history.length > HISTORY_MAX) history.shift();
+    const watered = prev && !prev.forced && !r.forced && r.moisture - prev.moisture >= WATER_JUMP;
+    const over = !!watered && r.moisture > MOISTURE_SOGGY;
+    if (watered) {
+      waterings.push({ reading: r, from: prev.moisture, to: r.moisture, over });
+      if (waterings.length > 20) waterings.shift();
+      moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'water', from: prev.moisture, to: r.moisture, over });
+    }
+    if (!prev || prev.mood !== r.mood) {
+      moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'mood', mood: r.mood,
+                     prevMood: prev ? prev.mood : null, moisture: r.moisture, temp: r.temp, lux: r.lux,
+                     afterWater: !!watered && prev.mood === 'THIRSTY', overWater: over });
+    }
+    if (moodLog.length > 200) moodLog = moodLog.slice(-200);
+    if (hoverIdx !== null && history.length === HISTORY_MAX && prev) hoverIdx = Math.max(0, hoverIdx - 1);
+    if (!silent) render();
+  }
+
+  function resetData() {
+    history = []; moodLog = []; waterings = []; hoverIdx = null; actSeq = 0;
+    render();
+  }
+
+  const sim = { index: 0, mode: 0, paused: false, speed: 1, timer: null };
+
+  function simTick() {
+    let m, t, l, clock;
+    if (sim.mode) { [m, t, l] = PRESETS[sim.mode - 1]; clock = TIMELINE[sim.index][0]; }
+    else { [clock, m, t, l] = TIMELINE[sim.index]; }
+    addReading({ clock, moisture: m, temp: t, lux: l, mood: computeMood(m, t, l), at: Date.now(), forced: sim.mode > 0 });
+    if (!sim.mode && !sim.paused) sim.index = (sim.index + 1) % TIMELINE.length;
+  }
+  function simSchedule() {
+    clearInterval(sim.timer);
+    sim.timer = null;
+    if (source !== 'sim' || sim.paused) return;
+    sim.timer = setInterval(simTick, SENSOR_INTERVAL_MS / sim.speed);
+  }
+  function simPrefill() {
+    const total = TIMELINE.length;
+    const now = Date.now();
+    for (let k = 0; k < total; k++) {
+      const [clock, m, t, l] = TIMELINE[k % TIMELINE.length];
+      addReading({ clock, moisture: m, temp: t, lux: l, mood: computeMood(m, t, l),
+                   at: now - (total - k) * SENSOR_INTERVAL_MS }, true);
+    }
+    sim.index = 0;
+    render();
+  }
+  function simStart() { simPrefill(); simSchedule(); }
+
+  $('playBtn').addEventListener('click', () => {
+    sim.paused = !sim.paused;
+    $('playText').textContent = sim.paused ? 'Play' : 'Pause';
+    $('playBtn').setAttribute('aria-pressed', String(sim.paused));
+    $('playIcon').innerHTML = sim.paused
+      ? '<path d="M3 2 L12 7 L3 12 Z" fill="currentColor"/>'
+      : '<rect x="3" y="2" width="3" height="10" fill="currentColor"/><rect x="8" y="2" width="3" height="10" fill="currentColor"/>';
+    simSchedule();
+    renderStatus();
+  });
+  $('modeSel').addEventListener('change', (e) => { sim.mode = +e.target.value; simTick(); simSchedule(); });
+  $('speedSel').addEventListener('change', (e) => { sim.speed = +e.target.value; simSchedule(); });
+  $('resetBtn').addEventListener('click', () => { resetData(); simStart(); });
+
+  const hasSerial = 'serial' in navigator;
+  const live = { port: null, reader: null, closed: null, lastAt: 0 };
+
+  function parseLine(lineStr) {
+    const p = lineStr.trim().split(',');
+    if (p.length < 4) return null;
+    const [clock, m, t, l] = p.slice(0, 4).map(Number);
+    if ([clock, m, t, l].some((v) => !Number.isFinite(v))) return null;
+    const mood = computeMood(m, t, l);
+    return { clock, moisture: m, temp: t, lux: l, mood, at: Date.now() };
+  }
+
+  function syncBacklog(r) {
+    if (history.length) return;
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    const idx = TIMELINE.findIndex(([c, m, t, l]) => c === r.clock && near(m, r.moisture, 0.6) && near(t, r.temp, 0.15) && near(l, r.lux, 1.5));
+    if (idx <= 0) return;
+    const now = Date.now();
+    for (let k = 0; k < idx; k++) {
+      const [clock, m, t, l] = TIMELINE[k];
+      addReading({ clock, moisture: m, temp: t, lux: l, mood: computeMood(m, t, l),
+                   at: now - (idx - k) * SENSOR_INTERVAL_MS }, true);
+    }
+  }
+
+  async function connectSerial() {
+    $('errMsg').textContent = '';
+    try {
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      try { await port.setSignals({ dataTerminalReady: true }); } catch (_) {}
+      live.port = port;
+      resetData();
+      $('connectBtn').hidden = true;
+      $('disconnectBtn').hidden = false;
+      renderStatus();
+      readLoop(port);
+    } catch (e) {
+      if (e && e.name !== 'NotFoundError') $('errMsg').textContent = 'Could not connect: ' + (e.message || e);
+    }
+  }
+
+  async function readLoop(port) {
+    const decoder = new TextDecoderStream();
+    live.closed = port.readable.pipeTo(decoder.writable).catch(() => {});
+    live.reader = decoder.readable.getReader();
+    let buf = '';
+    try {
+      for (;;) {
+        const { value, done } = await live.reader.read();
+        if (done) break;
+        buf += value;
+        const lines = buf.split(/\r?\n/);
+        buf = lines.pop();
+        for (const ln of lines) {
+          const r = parseLine(ln);
+          if (r && source === 'live') { live.lastAt = Date.now(); syncBacklog(r); addReading(r); }
+        }
+      }
+    } catch (e) {
+      $('errMsg').textContent = 'Device disconnected.';
+    }
+    await cleanupSerial();
+  }
+
+  async function cleanupSerial() {
+    const port = live.port;
+    live.port = null;
+    try { if (live.reader) await live.reader.cancel(); } catch (_) {}
+    try { if (live.closed) await live.closed; } catch (_) {}
+    try { if (port) await port.close(); } catch (_) {}
+    live.reader = null; live.closed = null;
+    $('connectBtn').hidden = false;
+    $('disconnectBtn').hidden = true;
+    renderStatus();
+  }
+
+  function findPlantType(text) {
+    const q = text.trim().toLowerCase();
+    if (!q) return null;
+    return PLANT_TYPES.find((p) => p.label.toLowerCase() === q)
+        || PLANT_TYPES.find((p) => p.words.some((w) => q.includes(w))) || null;
+  }
+  function savePlant(p) {
+    try { localStorage.setItem('pg.plant', JSON.stringify(p)); } catch (_) {}
+    location.reload();
+  }
+  function renderPlantInfo() {
+    const box = $('plantInfo');
+    box.textContent = '';
+    const t = PLANT_TYPES.find((x) => x.id === PLANT.typeId);
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const title = !savedPlant ? 'General houseplant' : cap(PLANT.name || (t ? t.label : 'Your plant'));
+    let note = PLANT.note || '';
+    if (!savedPlant) note = 'Default limits. Type your plant above to tailor them.';
+    else if (PLANT.typeId === 'custom') note = 'Custom limits.';
+    else if (PLANT.typeId === 'unlisted') note = `No care profile for “${PLANT.name}”, so the general houseplant limits are used.${note ? ' ' + note : ''}`;
+
+    const head = document.createElement('div');
+    head.className = 'plant-title';
+    head.textContent = title;
+    const chips = document.createElement('div');
+    chips.className = 'plant-chips';
+    [`Soil ${MOISTURE_THIRSTY}–${MOISTURE_SOGGY}%`, `Min ${TEMP_COLD} °C`, `Min ${LIGHT_DARK} lx`].forEach((txt) => {
+      const c = document.createElement('span');
+      c.className = 'chip';
+      c.textContent = txt;
+      chips.append(c);
+    });
+    box.append(head, chips);
+    if (note) { const n = document.createElement('div'); n.className = 'plant-note'; n.textContent = note; box.append(n); }
+  }
+  (function initPlant() {
+    const list = $('plantList');
+    PLANT_TYPES.forEach((p) => { const o = document.createElement('option'); o.value = p.label; list.append(o); });
+    $('plantInput').value = PLANT.name || '';
+    renderPlantInfo();
+    $('limSoilLo').value = MOISTURE_THIRSTY; $('limSoilHi').value = MOISTURE_SOGGY;
+    $('limTemp').value = TEMP_COLD; $('limLux').value = LIGHT_DARK;
+    if (savedPlant && PLANT.name) $('subTitle').textContent = `Your ${PLANT.name}, as a pet`;
+    $('plantApply').addEventListener('click', async () => {
+      const text = $('plantInput').value.trim();
+      if (!text) { $('plantInfo').textContent = 'Type a plant first, for example “Monstera” or “cactus”.'; return; }
+      const btns = [$('plantApply'), $('plantCustom'), $('plantReset')];
+      btns.forEach((b) => { b.disabled = true; });
+      $('plantInfo').textContent = '';
+      let why = '';
+      try {
+        const res = await fetch('/api/thresholds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plant: text }) });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && j.soil) {
+          if (!j.recognised) {
+            $('plantInfo').textContent = `Gemini doesn’t recognise “${text}” as a plant. Check the spelling, or use “Fine-tune the limits”.`;
+            btns.forEach((b) => { b.disabled = false; });
+            return;
+          }
+          savePlant({ name: text, typeId: 'gemini', soil: j.soil, temp: j.temp, lux: j.lux, note: j.note || '' });
+          return;
+        }
+        why = j.error === 'no-key' ? 'no Gemini API key is set on the server' : (j.message || `server said ${res.status}`);
+      } catch (_) {
+        why = 'could not reach the dashboard server (open the page through node serve.js)';
+      }
+      const t = findPlantType(text) || PLANT_TYPES[0];
+      savePlant({ name: text, typeId: findPlantType(text) ? t.id : 'unlisted', soil: t.soil, temp: t.temp, lux: t.lux,
+                  note: `Built-in profile used because ${why}.` });
+    });
+    $('plantCustom').addEventListener('click', () => {
+      const lo = +$('limSoilLo').value, hi = +$('limSoilHi').value, temp = +$('limTemp').value, lux = +$('limLux').value;
+      const bad = !(lo >= 0 && hi <= 100 && lo < hi) ? 'Soil limits need 0 ≤ thirsty < soggy ≤ 100.'
+        : !(temp >= 0 && temp <= 40) ? 'Minimum temperature must be 0–40 °C.'
+        : !(lux >= 1 && lux <= 1000) ? 'Minimum light must be 1–1000 lx.' : '';
+      if (bad) { $('plantInfo').textContent = bad; return; }
+      savePlant({ name: $('plantInput').value.trim(), typeId: 'custom', soil: [lo, hi], temp, lux });
+    });
+    $('plantReset').addEventListener('click', () => {
+      try { localStorage.removeItem('pg.plant'); } catch (_) {}
+      location.reload();
+    });
+  })();
+
+  $('connectBtn').addEventListener('click', connectSerial);
+  $('disconnectBtn').addEventListener('click', cleanupSerial);
+  $('viewToggle').addEventListener('click', () => {
+    const face = $('scene').hidden === false;
+    $('scene').hidden = face;
+    canvas.hidden = !face;
+    $('devCap').textContent = face ? 'TINYSCREEN+ · FACE' : 'TINYSCREEN+ · BUDDY';
+    $('viewToggle').textContent = face ? 'show buddy' : 'show face';
+  });
+  if (!hasSerial) {
+    $('connectBtn').disabled = true;
+    $('serialNote').textContent = 'Live USB needs Chrome or Edge on a computer.';
+  }
+
+  function setSource(s) {
+    if (s === source) return;
+    source = s;
+    $('srcSim').setAttribute('aria-pressed', String(s === 'sim'));
+    $('srcLive').setAttribute('aria-pressed', String(s === 'live'));
+    $('simControls').hidden = s !== 'sim';
+    $('liveControls').hidden = s !== 'live';
+    $('errMsg').textContent = '';
+    resetData();
+    if (s === 'sim') { if (live.port) cleanupSerial(); simStart(); }
+    else { simSchedule(); }
+    renderStatus();
+  }
+  $('srcSim').addEventListener('click', () => setSource('sim'));
+  $('srcLive').addEventListener('click', () => setSource('live'));
+
+  function stepHours(a, b) {
+    const d = ((b.clock - a.clock) % 1440 + 1440) % 1440;
+    return d > 0 ? d / 60 : Math.max(1, b.at - a.at) / 3.6e6;
+  }
+  function hoursPerSample() {
+    const n = history.length;
+    return n < 2 ? 0.5 : stepHours(history[n - 2], history[n - 1]);
+  }
+
+  const latestDay = () => (history.length ? history[history.length - 1].day : 0);
+  function dateForDay(d) {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    t.setDate(t.getDate() - (latestDay() - d));
+    return t;
+  }
+  const fmtDate = (d) => dateForDay(d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  function dayName(d) {
+    const diff = latestDay() - d;
+    return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : dateForDay(d).toLocaleDateString(undefined, { weekday: 'long' });
+  }
+  function fmtWhen(d, clock) {
+    const diff = latestDay() - d;
+    return (diff <= 1 ? dayName(d) + ' ' : fmtDate(d) + ', ') + fmtClock(clock);
+  }
+
+  function fmtAgo(h) {
+    if (h < 1 / 60) return 'just now';
+    if (h < 1) return `${Math.round(h * 60)} min ago`;
+    return `${h < 10 ? h.toFixed(1) : Math.round(h)} h ago`;
+  }
+
+  function renderWatered() {
+    const w = waterings[waterings.length - 1];
+    const last = history[history.length - 1];
+    const list = $('waterList');
+    list.textContent = '';
+    if (!w || !last) {
+      $('waterValue').textContent = '—';
+      $('waterSub').textContent = 'No watering detected yet';
+      return;
+    }
+    $('waterValue').textContent = fmtClock(w.reading.clock);
+    $('waterSub').textContent =
+      `${w.over ? 'Overwatered · ' : ''}${dayName(w.reading.day)}, ${fmtDate(w.reading.day)} · ${fmtAgo(last.hours - w.reading.hours)} · soil ${Math.round(w.from)}% → ${Math.round(w.to)}%`;
+
+    const prevW = waterings.slice(0, -1).slice(-3).reverse();
+    prevW.forEach((p) => {
+      const li = document.createElement('li');
+      const icon = document.createElement('span'); icon.innerHTML = p.over ? ICONS.serious : DROP_ICON; icon.style.display = 'inline-flex';
+      const txt = document.createElement('span');
+      txt.textContent = `${p.over ? 'Overwatered · ' : ''}${fmtWhen(p.reading.day, p.reading.clock)} · ${fmtAgo(last.hours - p.reading.hours)} · +${Math.round(p.to - p.from)}%`;
+      li.append(icon, txt);
+      list.append(li);
+    });
+    if (waterings.length >= 2) {
+      const span = w.reading.hours - waterings[0].reading.hours;
+      const li = document.createElement('li');
+      li.className = 'note';
+      li.textContent = `Watered on average every ${fmtAgo(span / (waterings.length - 1)).replace(' ago', '')}`;
+      list.append(li);
+    }
+  }
+
+  function soilSlope() {
+    const pts = history.slice(-8);
+    const n = pts.length;
+    if (n < 3) return null;
+    let sx = 0, sy = 0, sxy = 0, sxx = 0;
+    pts.forEach((p, i) => { sx += i; sy += p.moisture; sxy += i * p.moisture; sxx += i * i; });
+    return (n * sxy - sx * sy) / (n * sxx - sx * sx);
+  }
+
+  function predictHours() {
+    const last = history[history.length - 1];
+    if (!last) return null;
+    if (last.moisture < MOISTURE_THIRSTY) return 0;
+    const slope = soilSlope();
+    if (slope === null) return null;
+    if (slope > -0.05) return -1;
+    return (last.moisture - MOISTURE_THIRSTY) / -slope * hoursPerSample();
+  }
+
+  function predictDryHours() {
+    const last = history[history.length - 1];
+    const slope = soilSlope();
+    if (!last || slope === null) return null;
+    if (slope > -0.05) return -1;
+    return (last.moisture - MOISTURE_SOGGY) / -slope * hoursPerSample();
+  }
+
+  function moodSince() {
+    if (!history.length) return null;
+    const mood = currentMood();
+    let i = history.length - 1;
+    while (i > 0 && history[i - 1].mood === mood) i--;
+    return history[i].clock;
+  }
+
+  const MESSAGES = {
+    HAPPY:   (r) => `Feeling great! Soil, warmth and light are all just right.`,
+    THIRSTY: (r) => `I'm parched — my soil is down to ${Math.round(r.moisture)}%. Water me, please!`,
+    COLD:    (r) => `Brrr… it's only ${r.temp.toFixed(1)} °C here. Can I move somewhere warmer?`,
+    SLEEPY:  (r) => `Lights out (${Math.round(r.lux)} lx). Time for a little nap… zzz`,
+    SOGGY:   (r) => `Glub glub… I'm drowning! My soil is at ${Math.round(r.moisture)}%. No more water, please — let me dry out.`,
+  };
+
+  const ICONS = {
+    good: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="var(--good)"/><path d="M3.8 7.2 6 9.3 10.3 4.8" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    critical: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="var(--critical)"/><rect x="6.1" y="3" width="1.8" height="5" rx=".9" fill="#fff"/><circle cx="7" cy="10.3" r="1" fill="#fff"/></svg>',
+    serious: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 .8 13.4 12.6H.6Z" fill="var(--serious)"/><rect x="6.2" y="4.6" width="1.6" height="4.2" rx=".8" fill="#fff"/><circle cx="7" cy="10.6" r=".9" fill="#fff"/></svg>',
+    warning: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M9.5 1.2A6 6 0 1 0 12.8 9 5 5 0 0 1 9.5 1.2Z" fill="var(--warning)"/></svg>',
+  };
+
+  const DROP_ICON = '<svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 .8C6 .8 1 6.3 1 9.2a5 5 0 0 0 10 0C11 6.3 6 .8 6 .8Z" fill="var(--accent)"/></svg>';
+
+  const VITALS = {
+    moisture: {
+      tile: 'tileSoil', icon: 'moisture', title: 'Soil moisture', unit: '%',
+      fmt: (v) => String(Math.round(v)), frac: (v) => v / 100, thr: MOISTURE_THIRSTY / 100, thr2: MOISTURE_SOGGY / 100,
+      ok: (v) => v >= MOISTURE_THIRSTY && v <= MOISTURE_SOGGY,
+      badFor: (v) => (v > MOISTURE_SOGGY ? { level: 'serious', label: 'Wet' } : { level: 'critical', label: 'Dry' }),
+      sub: `Healthy ${MOISTURE_THIRSTY}–${MOISTURE_SOGGY}% · thirsty below, soggy above`,
+    },
+    temp: {
+      tile: 'tileTemp', icon: 'temperature', title: 'Temperature', unit: '°C',
+      fmt: (v) => v.toFixed(1), frac: (v) => v / 40, thr: TEMP_COLD / 40,
+      ok: (v) => v >= TEMP_COLD, bad: { level: 'serious', label: 'Cold' },
+      sub: `Cold below ${TEMP_COLD} °C · scale 0–40 °C`,
+    },
+    lux: {
+      tile: 'tileLight', icon: 'light', title: 'Light', unit: 'lx',
+      fmt: (v) => String(Math.round(v)), frac: (v) => Math.log10(v + 1) / 3, thr: Math.log10(LIGHT_DARK + 1) / 3,
+      ok: (v) => v >= LIGHT_DARK, bad: { level: 'warning', label: 'Dark' },
+      sub: `Sleepy below ${LIGHT_DARK} lx · log scale`,
+    },
+  };
+
+  function renderTile(key) {
+    const v = VITALS[key];
+    const node = $(v.tile);
+    const last = history[history.length - 1];
+    node.textContent = '';
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.append(document.createTextNode(v.title));
+    if (last) {
+      const val = last[key];
+      const ok = v.ok(val);
+      const bad = v.badFor ? v.badFor(val) : v.bad;
+      const st = document.createElement('span');
+      st.className = 'status';
+      st.innerHTML = ok ? ICONS.good : ICONS[bad.level];
+      st.append(document.createTextNode(ok ? 'OK' : bad.label));
+      label.append(st);
+      node.append(label);
+
+      const value = document.createElement('div');
+      value.className = 'value';
+      value.textContent = v.fmt(val);
+      const unit = document.createElement('small');
+      unit.textContent = v.unit;
+      value.append(unit);
+      const vrow = document.createElement('div');
+      vrow.className = 'vrow';
+      vrow.append(value);
+      node.append(vrow);
+
+      const meter = document.createElement('div');
+      meter.className = 'meter';
+      meter.setAttribute('role', 'img');
+      meter.setAttribute('aria-label', `${v.title} ${v.fmt(val)} ${v.unit}, ${ok ? 'OK' : bad.label}`);
+      const fill = document.createElement('div');
+      fill.className = 'fill';
+      fill.style.width = (Math.max(0, Math.min(1, v.frac(val))) * 100).toFixed(1) + '%';
+      fill.style.background = ok ? 'var(--good)' : `var(--${bad.level})`;
+      meter.append(fill);
+      [v.thr, v.thr2].forEach((t) => {
+        if (t === undefined) return;
+        const tick = document.createElement('div');
+        tick.className = 'tick';
+        tick.style.left = `calc(${(t * 100).toFixed(1)}% - 1px)`;
+        meter.append(tick);
+      });
+      node.append(meter);
+
+      const sub = document.createElement('div');
+      sub.className = 'sub';
+      sub.textContent = v.sub;
+      node.append(sub);
+
+      node.append(sparkline(history.slice(-24).map((r) => v.frac(r[key])), v.thr, v.thr2));
+    } else {
+      node.append(label);
+      const e = document.createElement('div');
+      e.className = 'value';
+      e.textContent = '—';
+      node.append(e);
+    }
+  }
+
+  function sparkline(vals, thr, thr2) {
+    const svg = el('svg', { class: 'spark', viewBox: '0 0 100 30', preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+    if (vals.length < 2) return svg;
+    const y = (f) => 28 - Math.max(0, Math.min(1, f)) * 26;
+    [thr, thr2].forEach((t) => {
+      if (t === undefined) return;
+      el('line', { x1: 0, x2: 100, y1: y(t), y2: y(t), stroke: 'var(--grid)', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke', 'stroke-dasharray': '3 3' }, svg);
+    });
+    const pts = vals.map((f, i) => `${(i / (vals.length - 1) * 100).toFixed(2)},${y(f).toFixed(2)}`).join(' ');
+    el('polyline', { points: pts, fill: 'none', stroke: 'var(--series-1)', 'stroke-width': 2, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+    return svg;
+  }
+
+  function renderHero() {
+    const last = history[history.length - 1];
+    const mood = currentMood();
+    const info = MOOD_INFO[mood];
+    paintMood($('moodSwatch'), mood);
+    $('moodName').textContent = last ? info.name : '—';
+    $('moodMsg').textContent = last ? MESSAGES[mood](last) : (source === 'live' ? 'Connect your TinyScreen+ to see how your plant feels.' : 'Waiting for the first reading…');
+    const since = moodSince();
+    $('moodSince').textContent = since !== null ? `· since ${fmtClock(since)}` : '';
+    canvas.setAttribute('aria-label', `Pixel-art plant face looking ${info.name.toLowerCase()}`);
+    if (last) {
+      const okf = [last.moisture >= MOISTURE_THIRSTY && last.moisture <= MOISTURE_SOGGY, last.temp >= TEMP_COLD, last.lux >= LIGHT_DARK];
+      const clamp01 = (v) => Math.max(0, Math.min(1, v));
+      const layers = document.querySelectorAll('.scene-layer');
+      const fill = (n, y0, y1, f) => {
+        const lvl = y1 + 1 - f * (y1 - y0 + 1);
+        n.style.clipPath = `inset(0 0 ${(100 - lvl / 765 * 100).toFixed(2)}% 0)`;
+      };
+      fill(layers[0], 402, 527, clamp01(last.moisture / 100));
+      fill(layers[1], 322, 607, clamp01(last.temp / 40));
+      const lf = clamp01(Math.log10(last.lux + 1) / 3);
+      const sunStep = lf < 0.2 ? 0.2 : lf < 0.4 ? 0.4 : lf < 0.6 ? 0.65 : 1;
+      layers[2].style.clipPath = 'none';
+      layers[2].style.filter = sunStep >= 1 ? 'none' : `grayscale(${(1 - sunStep).toFixed(2)}) brightness(${(0.25 + 0.75 * sunStep).toFixed(2)})`;
+      const ok = $('sceneOk');
+      ok.textContent = mood === 'HAPPY' ? 'OK' : info.name.toUpperCase();
+      ok.style.color = mood === 'HAPPY' ? '#3ddc97' : '#f2b94b';
+      $('scene').setAttribute('aria-label', `Plant buddy picture: ${info.name}. Soil ${okf[0] ? 'ok' : 'needs attention'}, temperature ${okf[1] ? 'ok' : 'needs attention'}, light ${okf[2] ? 'ok' : 'needs attention'}`);
+    }
+
+    const reasons = $('reasons');
+    reasons.textContent = '';
+    if (!last) return;
+    const chips = [
+      [`Soil ${Math.round(last.moisture)}%`, last.moisture >= MOISTURE_THIRSTY && last.moisture <= MOISTURE_SOGGY],
+      [`${last.temp.toFixed(1)} °C`, last.temp >= TEMP_COLD],
+      [`${Math.round(last.lux)} lx`, last.lux >= LIGHT_DARK],
+    ];
+    const levels = [last.moisture > MOISTURE_SOGGY ? 'serious' : 'critical', 'serious', 'warning'];
+    const iconKeys = ['moisture', 'temperature', 'light'];
+    chips.forEach(([text, ok], i) => {
+      const c = document.createElement('span');
+      c.className = 'chip';
+      c.append(document.createTextNode(text));
+      const st = document.createElement('span');
+      st.className = 'status-ico';
+      st.innerHTML = ok ? ICONS.good : ICONS[levels[i]];
+      c.append(st);
+      reasons.append(c);
+    });
+  }
+
+  function renderPrediction() {
+    const h = predictHours();
+    const last = history[history.length - 1];
+    if (last && last.moisture > MOISTURE_SOGGY) {
+      const d = predictDryHours();
+      $('predValue').textContent = 'Hold off';
+      $('predSub').textContent = d === null || d < 0
+        ? `Soil is above ${MOISTURE_SOGGY}% — too wet, don't water. It isn't drying out yet.`
+        : `Soil is above ${MOISTURE_SOGGY}% — too wet, don't water. Back under ${MOISTURE_SOGGY}% in ~${d < 10 ? d.toFixed(1) : Math.round(d)} h (around ${fmtClock(last.clock + d * 60)}).`;
+      return;
+    }
+    if (h === null) {
+      $('predValue').textContent = '—';
+      $('predSub').textContent = 'Needs a few readings to estimate';
+    } else if (h === 0) {
+      $('predValue').textContent = 'Now';
+      $('predSub').textContent = `Soil is below ${MOISTURE_THIRSTY}%`;
+    } else if (h < 0) {
+      $('predValue').textContent = 'Not soon';
+      $('predSub').textContent = 'Moisture is steady or rising';
+    } else {
+      $('predValue').textContent = `~${h < 10 ? h.toFixed(1) : Math.round(h)} h`;
+      $('predSub').textContent = `Around ${fmtClock(last.clock + h * 60)}, based on the last ${Math.min(8, history.length)} readings`;
+    }
+  }
+
+  function moodReason(e) {
+    const why = moodReasonBase(e);
+    if (e.overWater) return `Watering pushed the soil too far · ${why}`;
+    return e.afterWater ? `Watering fixed the thirst (soil ${Math.round(e.moisture)}%) · ${why}` : why;
+  }
+  function moodReasonBase(e) {
+    switch (e.mood) {
+      case 'SOGGY':   return `Soil rose to ${Math.round(e.moisture)}% (above ${MOISTURE_SOGGY}%)`;
+      case 'THIRSTY': return `Soil dropped to ${Math.round(e.moisture)}% (below ${MOISTURE_THIRSTY}%)`;
+      case 'COLD':    return `Temperature fell to ${e.temp.toFixed(1)} °C (below ${TEMP_COLD} °C)`;
+      case 'SLEEPY':  return `Light dropped to ${Math.round(e.lux)} lx (below ${LIGHT_DARK} lx)`;
+      default:        return `All vitals OK · soil ${Math.round(e.moisture)}%, ${e.temp.toFixed(1)} °C, ${Math.round(e.lux)} lx`;
+    }
+  }
+
+  function renderLog() {
+    const box = $('activity');
+    box.textContent = '';
+    const items = moodLog
+      .filter((e) => actFilter === 'all' || e.type === actFilter)
+      .sort((a, b) => b.day - a.day || b.clock - a.clock || b.seq - a.seq);
+    if (!items.length) {
+      const p = document.createElement('div'); p.className = 'empty';
+      p.textContent = actFilter === 'water' ? 'No waterings detected yet.' : 'Nothing has happened yet.';
+      box.append(p);
+      return;
+    }
+
+    const groups = [];
+    items.forEach((e) => {
+      if (!groups.length || groups[groups.length - 1].day !== e.day) groups.push({ day: e.day, items: [] });
+      groups[groups.length - 1].items.push(e);
+    });
+
+    groups.forEach((g) => {
+      const sec = document.createElement('div'); sec.className = 'act-day';
+      const h = document.createElement('h3');
+      const nm = document.createElement('span');
+      h.textContent = dayName(g.day);
+      nm.textContent = fmtDate(g.day);
+      const count = document.createElement('em');
+      const nO = g.items.filter((e) => e.type === 'water' && e.over).length;
+      const nW = g.items.filter((e) => e.type === 'water').length - nO;
+      const nM = g.items.filter((e) => e.type === 'mood').length;
+      count.textContent = [nW ? `${nW} watering${nW > 1 ? 's' : ''}` : '',
+                           nO ? `${nO} overwatering${nO > 1 ? 's' : ''}` : '',
+                           nM ? `${nM} mood change${nM > 1 ? 's' : ''}` : '']
+        .filter(Boolean).join(' · ');
+      h.append(nm, count);
+      sec.append(h);
+
+      const ul = document.createElement('ul'); ul.className = 'acts';
+      g.items.forEach((e) => {
+        const li = document.createElement('li');
+        const t = document.createElement('time'); t.textContent = fmtClock(e.clock);
+        const dd = dateForDay(e.day);
+        t.setAttribute('datetime', `${dd.getFullYear()}-${String(dd.getMonth() + 1).padStart(2, '0')}-${String(dd.getDate()).padStart(2, '0')}T${fmtClock(e.clock)}`);
+        const ic = document.createElement('span'); ic.className = 'ic';
+        const body = document.createElement('div');
+        const title = document.createElement('div'); title.className = 'ev-title';
+        const detail = document.createElement('div'); detail.className = 'ev-detail';
+        if (e.type === 'water') {
+          ic.innerHTML = e.over ? ICONS.serious : DROP_ICON;
+          title.textContent = e.over ? 'Overwatered' : 'Watered';
+          detail.textContent = `Soil moisture ${Math.round(e.from)}% → ${Math.round(e.to)}% (+${Math.round(e.to - e.from)}%)` +
+            (e.over ? ` · above the ${MOISTURE_SOGGY}% soggy limit` : '');
+        } else {
+          const sw = document.createElement('span'); sw.className = 'swatch'; paintMood(sw, e.mood);
+          ic.append(sw);
+          title.textContent = e.prevMood
+            ? `Mood changed: ${MOOD_INFO[e.prevMood].name} → ${MOOD_INFO[e.mood].name}`
+            : `Mood: ${MOOD_INFO[e.mood].name}`;
+          detail.textContent = moodReason(e);
+        }
+        body.append(title, detail);
+        li.append(t, ic, body);
+        ul.append(li);
+      });
+      sec.append(ul);
+      box.append(sec);
+    });
+  }
+
+  document.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
+    actFilter = b.dataset.act;
+    document.querySelectorAll('[data-act]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    renderLog();
+  }));
+
+  function renderTable() {
+    const tb = $('tableBody');
+    tb.textContent = '';
+    for (let i = history.length - 1; i >= 0; i--) {
+      const r = history[i];
+      const tr = document.createElement('tr');
+      [fmtDate(r.day), fmtClock(r.clock), Math.round(r.moisture), r.temp.toFixed(1), Math.round(r.lux), MOOD_INFO[r.mood].name]
+        .forEach((v) => { const td = document.createElement('td'); td.textContent = v; tr.append(td); });
+      tb.append(tr);
+    }
+  }
+
+  function renderStatus() {
+    const dot = $('srcDot'), txt = $('srcText');
+    dot.className = 'dot';
+    if (source === 'sim') {
+      dot.classList.add('sim');
+      txt.textContent = sim.paused ? 'Simulated data · paused' : 'Simulated data';
+    } else if (!live.port) {
+      txt.textContent = 'Live device · not connected';
+    } else if (live.lastAt && Date.now() - live.lastAt > 3 * SENSOR_INTERVAL_MS) {
+      dot.classList.add('stale');
+      txt.textContent = 'Live device · no data';
+    } else {
+      dot.classList.add('live');
+      txt.textContent = live.lastAt ? 'Live device' : 'Live device · waiting for data';
+    }
+    const last = history[history.length - 1];
+    $('lastUpdate').textContent = last ? `Last reading ${fmtClock(last.clock)}` : '';
+  }
+  setInterval(() => { if (source === 'live') renderStatus(); }, 1000);
+
+  const CHART = {
+    moisture: { title: 'Soil moisture history', unit: '%', fmt: (v) => `${Math.round(v)}%`,
+      domain: () => [0, 100], ticks: [0, 25, 50, 75, 100], tickFmt: (v) => v, scale: 'lin',
+      thr: MOISTURE_THIRSTY, thrLabel: `Thirsty below ${MOISTURE_THIRSTY}%`,
+      thr2: MOISTURE_SOGGY, thr2Label: `Soggy above ${MOISTURE_SOGGY}%` },
+    temp: { title: 'Temperature history', unit: '°C', fmt: (v) => `${v.toFixed(1)} °C`,
+      domain: (vals) => {
+        const lo = Math.floor(Math.min(TEMP_COLD, ...vals) / 5) * 5 - (Math.min(TEMP_COLD, ...vals) % 5 === 0 ? 5 : 0);
+        const hi = Math.ceil(Math.max(TEMP_COLD, ...vals) / 5) * 5 + (Math.max(TEMP_COLD, ...vals) % 5 === 0 ? 5 : 0);
+        return [lo, hi];
+      },
+      ticks: null, tickFmt: (v) => v, scale: 'lin', thr: TEMP_COLD, thrLabel: `Cold below ${TEMP_COLD} °C` },
+    lux: { title: 'Light history', unit: 'lx', fmt: (v) => `${Math.round(v)} lx`,
+      domain: () => [0, Math.log10(1001)], ticks: [1, 10, 100, 1000], tickFmt: (v) => (v >= 1000 ? '1k' : v), scale: 'log',
+      thr: LIGHT_DARK, thrLabel: `Sleepy below ${LIGHT_DARK} lx` },
+  };
+
+  const chartBox = $('chartBox');
+  const tooltip = $('tooltip');
+
+  document.querySelectorAll('[data-metric]').forEach((b) => b.addEventListener('click', () => {
+    metric = b.dataset.metric;
+    document.querySelectorAll('[data-metric]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    renderChart();
+  }));
+
+  function renderLegend() {
+    const lg = $('moodLegend');
+    lg.textContent = '';
+    const lbl = document.createElement('span'); lbl.textContent = 'Mood strip:'; lbl.style.color = 'var(--text-muted)';
+    lg.append(lbl);
+    MOODS.forEach((m) => {
+      const s = document.createElement('span');
+      const sw = document.createElement('span'); sw.className = 'swatch'; paintMood(sw, m);
+      s.append(sw, document.createTextNode(MOOD_INFO[m].name));
+      lg.append(s);
+    });
+  }
+
+  function renderChart() {
+    const cfg = CHART[metric];
+    $('chartTitle').textContent = cfg.title;
+    chartBox.querySelectorAll('svg, .empty').forEach((n) => n.remove());
+
+    if (history.length < 2) {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'The chart appears after a couple of readings.';
+      chartBox.prepend(e);
+      tooltip.classList.remove('show');
+      return;
+    }
+
+    const W = Math.max(260, chartBox.clientWidth);
+    const plotH = W < 520 ? 150 : 190;
+    const M = { l: 38, r: 14, t: 14 };
+    const stripGap = 8, stripH = 10, axisH = 20;
+    const H = M.t + plotH + stripGap + stripH + axisH;
+    const pw = W - M.l - M.r;
+    const n = history.length;
+    const vals = history.map((r) => r[metric]);
+    const [d0, d1] = cfg.domain(vals);
+    const tv = (v) => (cfg.scale === 'log' ? Math.log10(v + 1) : v);
+    const x = (i) => M.l + (n === 1 ? pw / 2 : (i * pw) / (n - 1));
+    const y = (v) => M.t + plotH * (1 - (tv(v) - d0) / (d1 - d0));
+    const plotBottom = M.t + plotH;
+
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, tabindex: 0, role: 'img',
+      'aria-label': `${cfg.title}, ${n} readings. Latest ${cfg.fmt(vals[n - 1])}. Use left and right arrow keys to inspect readings.` });
+
+    let ticks = cfg.ticks;
+    if (!ticks) { ticks = []; for (let v = d0; v <= d1 + 1e-9; v += 5) ticks.push(v); }
+    ticks.forEach((tval) => {
+      const yy = y(tval);
+      el('line', { x1: M.l, x2: W - M.r, y1: yy, y2: yy, stroke: 'var(--grid)', 'stroke-width': 1 }, svg);
+      const t = el('text', { x: M.l - 6, y: yy + 4, 'text-anchor': 'end', 'font-size': 11, fill: 'var(--text-muted)', style: 'font-variant-numeric: tabular-nums' }, svg);
+      t.textContent = cfg.tickFmt(tval);
+    });
+    el('line', { x1: M.l, x2: W - M.r, y1: plotBottom, y2: plotBottom, stroke: 'var(--axis)', 'stroke-width': 1 }, svg);
+
+    const ty = y(cfg.thr);
+    el('line', { x1: M.l, x2: W - M.r, y1: ty, y2: ty, stroke: 'var(--critical)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }, svg);
+    const tl = el('text', { x: M.l + 4, y: ty - 5, 'text-anchor': 'start', 'font-size': 11, fill: 'var(--text-secondary)' }, svg);
+    tl.textContent = cfg.thrLabel;
+    if (cfg.thr2 !== undefined) {
+      const ty2 = y(cfg.thr2);
+      el('line', { x1: M.l, x2: W - M.r, y1: ty2, y2: ty2, stroke: 'var(--serious)', 'stroke-width': 1.5, 'stroke-dasharray': '2 3' }, svg);
+      const tl2 = el('text', { x: M.l + 4, y: ty2 - 5, 'text-anchor': 'start', 'font-size': 11, fill: 'var(--text-secondary)' }, svg);
+      tl2.textContent = cfg.thr2Label;
+    }
+
+    const defs = el('defs', {}, svg);
+    const pat = el('pattern', { id: 'hatch-soggy', patternUnits: 'userSpaceOnUse', width: 4, height: 4, patternTransform: 'rotate(45)' }, defs);
+    el('rect', { width: 2, height: 4, fill: 'var(--mood-soggy)' }, pat);
+
+    const d = vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+    el('path', { d, fill: 'none', stroke: 'var(--series-1)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+
+    const waterIdx = new Map();
+    waterings.forEach((w) => {
+      const i = history.indexOf(w.reading);
+      if (i < 0) return;
+      waterIdx.set(i, w);
+      const wx = x(i);
+      const wc = w.over ? 'var(--serious)' : 'var(--accent)';
+      el('line', { x1: wx, x2: wx, y1: M.t + 12, y2: plotBottom, stroke: wc, 'stroke-width': 1, 'stroke-dasharray': '2 3', opacity: 0.7 }, svg);
+      el('path', { d: `M${wx},${M.t - 2} C${wx},${M.t - 2} ${wx - 5},${M.t + 4} ${wx - 5},${M.t + 7} a5,5 0 0 0 10,0 C${wx + 5},${M.t + 4} ${wx},${M.t - 2} ${wx},${M.t - 2}Z`, fill: wc }, svg);
+      if (w.over) {
+        el('rect', { x: wx - 0.7, y: M.t + 3, width: 1.4, height: 4, fill: '#fff' }, svg);
+        el('circle', { cx: wx, cy: M.t + 9, r: 0.9, fill: '#fff' }, svg);
+      }
+    });
+
+    const lx = x(n - 1), ly = y(vals[n - 1]);
+    el('circle', { cx: lx, cy: ly, r: 5, fill: 'var(--series-1)', stroke: 'var(--surface)', 'stroke-width': 2 }, svg);
+
+    const stripY = plotBottom + stripGap;
+    const step = n > 1 ? pw / (n - 1) : pw;
+    let runStart = 0;
+    for (let i = 1; i <= n; i++) {
+      if (i === n || history[i].mood !== history[runStart].mood) {
+        const xa = Math.max(M.l, x(runStart) - step / 2) + (runStart === 0 ? 0 : 1);
+        const xb = Math.min(W - M.r, x(i - 1) + step / 2) - (i === n ? 0 : 1);
+        if (xb - xa > 0.5) {
+          const soggy = history[runStart].mood === 'SOGGY';
+          el('rect', { x: xa, y: stripY, width: xb - xa, height: stripH, rx: 2,
+            fill: soggy ? 'url(#hatch-soggy)' : `var(${MOOD_INFO[history[runStart].mood].var})`,
+            stroke: soggy ? 'var(--mood-soggy)' : 'none', 'stroke-width': 1 }, svg);
+        }
+        runStart = i;
+      }
+    }
+
+    const maxLabels = Math.max(2, Math.floor(pw / 60));
+    const every = Math.max(1, Math.ceil(n / maxLabels));
+    for (let i = 0; i < n; i += every) {
+      const t = el('text', { x: x(i), y: H - 4, 'text-anchor': i === 0 ? 'start' : 'middle', 'font-size': 11, fill: 'var(--text-muted)', style: 'font-variant-numeric: tabular-nums' }, svg);
+      t.textContent = fmtClock(history[i].clock);
+    }
+
+    const cross = el('g', { visibility: 'hidden' }, svg);
+    const cLine = el('line', { y1: M.t, y2: stripY + stripH, stroke: 'var(--text-muted)', 'stroke-width': 1 }, cross);
+    const cDot = el('circle', { r: 5, fill: 'var(--series-1)', stroke: 'var(--surface)', 'stroke-width': 2 }, cross);
+
+    const hit = el('rect', { x: M.l - 8, y: 0, width: pw + 16, height: H, fill: 'transparent' }, svg);
+
+    const show = (i) => {
+      hoverIdx = i;
+      const r = history[i];
+      const cx = x(i), cy = y(r[metric]);
+      cLine.setAttribute('x1', cx); cLine.setAttribute('x2', cx);
+      cDot.setAttribute('cx', cx); cDot.setAttribute('cy', cy);
+      cross.setAttribute('visibility', 'visible');
+
+      tooltip.textContent = '';
+      const tt = document.createElement('div'); tt.className = 't-time'; tt.textContent = fmtWhen(r.day, r.clock);
+      const tv2 = document.createElement('div'); tv2.className = 't-val'; tv2.textContent = cfg.fmt(r[metric]);
+      const row = document.createElement('div'); row.className = 't-row';
+      const key = document.createElement('span'); key.className = 'key'; key.style.background = `var(${MOOD_INFO[r.mood].var})`;
+      row.append(key, document.createTextNode(MOOD_INFO[r.mood].name));
+      tooltip.append(tt, tv2, row);
+      const w = waterIdx.get(i);
+      if (w) {
+        const wr = document.createElement('div'); wr.className = 't-row';
+        const icon = document.createElement('span'); icon.innerHTML = w.over ? ICONS.serious : DROP_ICON; icon.style.display = 'inline-flex';
+        wr.append(icon, document.createTextNode(`${w.over ? 'Overwatered' : 'Watered'}: ${Math.round(w.from)}% → ${Math.round(w.to)}%`));
+        tooltip.append(wr);
+      }
+      tooltip.classList.add('show');
+
+      const scale = chartBox.clientWidth / W;
+      const tw = tooltip.offsetWidth;
+      let left = cx * scale + 12;
+      if (left + tw > chartBox.clientWidth) left = cx * scale - tw - 12;
+      tooltip.style.left = Math.max(0, left) + 'px';
+      tooltip.style.top = Math.max(0, (cy * scale) - 30) + 'px';
+    };
+    const hide = () => { hoverIdx = null; cross.setAttribute('visibility', 'hidden'); tooltip.classList.remove('show'); };
+    const idxFromEvent = (ev) => {
+      const rectB = svg.getBoundingClientRect();
+      const sx = (ev.clientX - rectB.left) * (W / rectB.width);
+      return Math.max(0, Math.min(n - 1, Math.round(((sx - M.l) / pw) * (n - 1))));
+    };
+    hit.addEventListener('pointermove', (ev) => show(idxFromEvent(ev)));
+    hit.addEventListener('pointerdown', (ev) => show(idxFromEvent(ev)));
+    svg.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') hide(); });
+    svg.addEventListener('blur', hide);
+    svg.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight' && ev.key !== 'Home' && ev.key !== 'End') return;
+      ev.preventDefault();
+      let i = hoverIdx === null ? n - 1 : hoverIdx;
+      if (ev.key === 'ArrowLeft') i--; else if (ev.key === 'ArrowRight') i++;
+      else if (ev.key === 'Home') i = 0; else i = n - 1;
+      show(Math.max(0, Math.min(n - 1, i)));
+    });
+
+    chartBox.prepend(svg);
+    if (hoverIdx !== null && hoverIdx < n) show(hoverIdx);
+  }
+
+  let resizeRaf = 0;
+  new ResizeObserver(() => { cancelAnimationFrame(resizeRaf); resizeRaf = requestAnimationFrame(renderChart); }).observe(chartBox);
+
+  function render() {
+    renderHero();
+    renderTile('moisture'); renderTile('temp'); renderTile('lux');
+    renderPrediction();
+    renderWatered();
+    renderLog();
+    renderTable();
+    renderChart();
+    renderStatus();
+    drawPet(currentMood(), animFrame);
+  }
+
+  renderLegend();
+  drawPet('HAPPY', 0);
+  simStart();
+})();
+</script>
+</body>
+</html>
