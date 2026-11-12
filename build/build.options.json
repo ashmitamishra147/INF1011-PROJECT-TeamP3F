@@ -1,9 +1,0 @@
-{
-  "additionalFiles": "",
-  "compiler.optimization_flags": "",
-  "customBuildProperties": "",
-  "fqbn": "TinyCircuits:samd:tinyscreen",
-  "hardwareFolders": "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0,C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0",
-  "otherLibrariesFolders": "C:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries",
-  "sketchLocation": "C:\\Users\\jyuhn\\INF1011\\TinyScreenApp"
-}
