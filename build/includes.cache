@@ -1,0 +1,417 @@
+[
+  {
+    "added_include_path": "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino"
+  },
+  {
+    "added_include_path": "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p"
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+      "depfile_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4/bin/arm-none-eabi-g++",
+        "-mcpu=cortex-m0plus",
+        "-mthumb",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-nostdlib",
+        "--param",
+        "max-inline-insns-single=500",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=48000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_SAMD_ZERO",
+        "-DARDUINO_ARCH_SAMD",
+        "-D__SAMD21G18A__",
+        "-DUSB_VID=0x03EB",
+        "-DUSB_PID=0x8009",
+        "-DUSBCON",
+        "-DUSB_MANUFACTURER=\"TinyCircuits\"",
+        "-DUSB_PRODUCT=\"TinyScreen+\"",
+        "-DUSBCON",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS\\4.5.0/CMSIS/Include/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS-Atmel\\1.2.0/CMSIS/Device/ATMEL/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+        "-o",
+        "nul",
+        "-MMD",
+        "-MF",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "Wire.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire"
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+      "depfile_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4/bin/arm-none-eabi-g++",
+        "-mcpu=cortex-m0plus",
+        "-mthumb",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-nostdlib",
+        "--param",
+        "max-inline-insns-single=500",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=48000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_SAMD_ZERO",
+        "-DARDUINO_ARCH_SAMD",
+        "-D__SAMD21G18A__",
+        "-DUSB_VID=0x03EB",
+        "-DUSB_PID=0x8009",
+        "-DUSBCON",
+        "-DUSB_MANUFACTURER=\"TinyCircuits\"",
+        "-DUSB_PRODUCT=\"TinyScreen+\"",
+        "-DUSBCON",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS\\4.5.0/CMSIS/Include/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS-Atmel\\1.2.0/CMSIS/Device/ATMEL/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+        "-o",
+        "nul",
+        "-MMD",
+        "-MF",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "SPI.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI"
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+      "depfile_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4/bin/arm-none-eabi-g++",
+        "-mcpu=cortex-m0plus",
+        "-mthumb",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-nostdlib",
+        "--param",
+        "max-inline-insns-single=500",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=48000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_SAMD_ZERO",
+        "-DARDUINO_ARCH_SAMD",
+        "-D__SAMD21G18A__",
+        "-DUSB_VID=0x03EB",
+        "-DUSB_PID=0x8009",
+        "-DUSBCON",
+        "-DUSB_MANUFACTURER=\"TinyCircuits\"",
+        "-DUSB_PRODUCT=\"TinyScreen+\"",
+        "-DUSBCON",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS\\4.5.0/CMSIS/Include/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS-Atmel\\1.2.0/CMSIS/Device/ATMEL/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+        "-o",
+        "nul",
+        "-MMD",
+        "-MF",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+      ]
+    }
+  },
+  {
+    "missing_include_h": "TinyScreen.h"
+  },
+  {
+    "added_include_path": "C:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries\\TinyScreen"
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+      "depfile_path": "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4/bin/arm-none-eabi-g++",
+        "-mcpu=cortex-m0plus",
+        "-mthumb",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-nostdlib",
+        "--param",
+        "max-inline-insns-single=500",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=48000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_SAMD_ZERO",
+        "-DARDUINO_ARCH_SAMD",
+        "-D__SAMD21G18A__",
+        "-DUSB_VID=0x03EB",
+        "-DUSB_PID=0x8009",
+        "-DUSBCON",
+        "-DUSB_MANUFACTURER=\"TinyCircuits\"",
+        "-DUSB_PRODUCT=\"TinyScreen+\"",
+        "-DUSBCON",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS\\4.5.0/CMSIS/Include/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS-Atmel\\1.2.0/CMSIS/Device/ATMEL/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI",
+        "-IC:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries\\TinyScreen",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged",
+        "-o",
+        "nul",
+        "-MMD",
+        "-MF",
+        "C:\\Users\\jyuhn\\INF1011\\build\\sketch\\TinyScreenApp.ino.cpp.merged.libsdetect.d"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire\\Wire.cpp",
+      "depfile_path": "C:\\Users\\jyuhn\\INF1011\\build\\libraries\\Wire\\Wire.cpp.libsdetect.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4/bin/arm-none-eabi-g++",
+        "-mcpu=cortex-m0plus",
+        "-mthumb",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-nostdlib",
+        "--param",
+        "max-inline-insns-single=500",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=48000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_SAMD_ZERO",
+        "-DARDUINO_ARCH_SAMD",
+        "-D__SAMD21G18A__",
+        "-DUSB_VID=0x03EB",
+        "-DUSB_PID=0x8009",
+        "-DUSBCON",
+        "-DUSB_MANUFACTURER=\"TinyCircuits\"",
+        "-DUSB_PRODUCT=\"TinyScreen+\"",
+        "-DUSBCON",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS\\4.5.0/CMSIS/Include/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS-Atmel\\1.2.0/CMSIS/Device/ATMEL/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI",
+        "-IC:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries\\TinyScreen",
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire\\Wire.cpp",
+        "-o",
+        "nul",
+        "-MMD",
+        "-MF",
+        "C:\\Users\\jyuhn\\INF1011\\build\\libraries\\Wire\\Wire.cpp.libsdetect.d"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI\\SPI.cpp",
+      "depfile_path": "C:\\Users\\jyuhn\\INF1011\\build\\libraries\\SPI\\SPI.cpp.libsdetect.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4/bin/arm-none-eabi-g++",
+        "-mcpu=cortex-m0plus",
+        "-mthumb",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-nostdlib",
+        "--param",
+        "max-inline-insns-single=500",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=48000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_SAMD_ZERO",
+        "-DARDUINO_ARCH_SAMD",
+        "-D__SAMD21G18A__",
+        "-DUSB_VID=0x03EB",
+        "-DUSB_PID=0x8009",
+        "-DUSBCON",
+        "-DUSB_MANUFACTURER=\"TinyCircuits\"",
+        "-DUSB_PRODUCT=\"TinyScreen+\"",
+        "-DUSBCON",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS\\4.5.0/CMSIS/Include/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS-Atmel\\1.2.0/CMSIS/Device/ATMEL/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI",
+        "-IC:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries\\TinyScreen",
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI\\SPI.cpp",
+        "-o",
+        "nul",
+        "-MMD",
+        "-MF",
+        "C:\\Users\\jyuhn\\INF1011\\build\\libraries\\SPI\\SPI.cpp.libsdetect.d"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  },
+  {
+    "compile": {
+      "source_path": "C:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries\\TinyScreen\\TinyScreen.cpp",
+      "depfile_path": "C:\\Users\\jyuhn\\INF1011\\build\\libraries\\TinyScreen\\TinyScreen.cpp.libsdetect.d"
+    },
+    "compile_task": {
+      "args": [
+        "C:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\arm-none-eabi-gcc\\7-2017q4/bin/arm-none-eabi-g++",
+        "-mcpu=cortex-m0plus",
+        "-mthumb",
+        "-c",
+        "-g",
+        "-Os",
+        "-w",
+        "-std=gnu++11",
+        "-ffunction-sections",
+        "-fdata-sections",
+        "-fno-threadsafe-statics",
+        "-nostdlib",
+        "--param",
+        "max-inline-insns-single=500",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-w",
+        "-x",
+        "c++",
+        "-E",
+        "-CC",
+        "-DF_CPU=48000000L",
+        "-DARDUINO=10607",
+        "-DARDUINO_SAMD_ZERO",
+        "-DARDUINO_ARCH_SAMD",
+        "-D__SAMD21G18A__",
+        "-DUSB_VID=0x03EB",
+        "-DUSB_PID=0x8009",
+        "-DUSBCON",
+        "-DUSB_MANUFACTURER=\"TinyCircuits\"",
+        "-DUSB_PRODUCT=\"TinyScreen+\"",
+        "-DUSBCON",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS\\4.5.0/CMSIS/Include/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\arduino\\tools\\CMSIS-Atmel\\1.2.0/CMSIS/Device/ATMEL/",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\cores\\arduino",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\variants\\tinyscreen_p",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\Wire",
+        "-IC:\\Users\\jyuhn\\AppData\\Local\\Arduino15\\packages\\TinyCircuits\\hardware\\samd\\1.1.0\\libraries\\SPI",
+        "-IC:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries\\TinyScreen",
+        "C:\\Users\\jyuhn\\OneDrive\\Documents\\Arduino\\libraries\\TinyScreen\\TinyScreen.cpp",
+        "-o",
+        "nul",
+        "-MMD",
+        "-MF",
+        "C:\\Users\\jyuhn\\INF1011\\build\\libraries\\TinyScreen\\TinyScreen.cpp.libsdetect.d"
+      ]
+    }
+  },
+  {
+    "missing_include_h": ""
+  }
+]
