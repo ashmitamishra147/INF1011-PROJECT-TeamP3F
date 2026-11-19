@@ -1,3 +1,9 @@
+// Tiny static server for the Plant Guardian dashboard (no installs needed), plus a small
+// proxy that asks Google Gemini for a plant's care limits. The API key stays on this computer:
+// it is read from the GEMINI_API_KEY environment variable or from a ".env" file next to this
+// script, and it is never sent to the browser.
+//
+// Usage:  node serve.js        then open http://localhost:8000
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -7,6 +13,7 @@ const PORT = Number(process.env.PORT) || 8000;
 const ROOT = __dirname;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.json': 'application/json' };
 
+// ---- config: GEMINI_API_KEY (+ optional GEMINI_MODEL) from the environment or ./.env
 function readEnvFile() {
   try {
     const out = {};
@@ -22,6 +29,7 @@ function config() {
   return { key: process.env.GEMINI_API_KEY || f.GEMINI_API_KEY || '', model: process.env.GEMINI_MODEL || f.GEMINI_MODEL || 'gemini-2.5-flash' };
 }
 
+// ---- ask Gemini for the limits of one plant type
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
@@ -68,6 +76,7 @@ async function askGemini(plant, cfg) {
   if (!text) throw new Error('Gemini sent no answer');
   const j = JSON.parse(text);
 
+  // never trust the model's numbers blindly: clamp and sanity-check them
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(Number(v))));
   const out = {
     plant: String(j.plant || plant).slice(0, 40),
@@ -105,6 +114,7 @@ function handleThresholds(req, res) {
   });
 }
 
+// ---- static files
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'POST' && url.pathname === '/api/thresholds') return handleThresholds(req, res);
@@ -115,6 +125,7 @@ http.createServer((req, res) => {
   if (p.endsWith('/')) p += 'index.html';
   const file = path.join(ROOT, p);
   const rel = path.relative(ROOT, file);
+  // keep secrets and server code private
   if (rel.startsWith('..') || path.isAbsolute(rel) || rel.split(path.sep).some((s) => s.startsWith('.')) || rel === 'serve.js') {
     res.writeHead(403); return res.end();
   }

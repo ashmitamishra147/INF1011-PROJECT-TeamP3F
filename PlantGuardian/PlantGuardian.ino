@@ -1,27 +1,71 @@
-﻿#include <Wire.h>
+﻿/*
+  Plant Vitals Guardian - Tamagotchi-style plant pet for TinyScreen+ (96x64 OLED)
+
+  SIMULATION BUILD: sensor readings come from a hardcoded 48-hour sample table
+  (see TIMELINE below). When the Wireling sensors are ready, set
+  USE_SIMULATED_DATA to 0 and fill in the three read*() functions.
+
+  Soil moisture has two limits: below 30% the plant is THIRSTY, above 80% it is
+  SOGGY (over-watered). Healthy range is 30-80%.
+
+  Screens (cycle with the bottom buttons):
+    1. BUDDY   - the picture from plantguardian.jpg (plant, drop = soil, thermometer =
+                 temperature, sun = light). A symbol goes dull when its reading is out of
+                 range, and the status box says OK / THIRSTY / COLD / SLEEPY / SOGGY
+    2. PET     - the plant's face, driven by its mood
+    3. VITALS  - the raw numbers behind the mood, with threshold markers
+    4. SOIL    - soil moisture graph + predicted next watering time
+    5. TEMP    - temperature graph
+    6. LIGHT   - light graph (log scale)
+  (dashed lines on each graph mark the mood thresholds; the soil graph has two)
+
+  Buttons:
+    Lower-right : next screen
+    Lower-left  : previous screen
+    Upper-left  : simulation mode (48h timeline -> force Happy/Thirsty/Cold/Sleepy/Soggy)
+    Upper-right : pause / resume the timeline
+*/
+
+#include <Wire.h>
 #include <SPI.h>
 #include <TinyScreen.h>
+
+// ---------------------------------------------------------------- config
+// 1 = built-in sample timeline, 0 = read the real Wirelings (light, soil moisture, temperature)
+#define USE_SIMULATED_DATA 0
+
+// Wireling adapter ports (0-3, printed on the adapter). Must be defined before Sensors.h.
+#define LIGHT_PORT    0
+#define MOISTURE_PORT 1
+#define TEMP_PORT     2
+#define BUZZER_PORT   3
+#if !USE_SIMULATED_DATA
+#include "Sensors.h"   // Wireling drivers: PCT2075 (temp), TSL2572 (light), capacitive soil moisture
+#endif
+
+// 1 = include sprites.h and show the BUDDY picture screen (needs the 59 KB picture data); 0 = leave both out
+#define USE_SCENE 0
+#if USE_SCENE
 #include "sprites.h"
+#endif
 
-
-#define USE_SIMULATED_DATA 1
-
-const unsigned long SENSOR_INTERVAL_MS = 2000;
-const unsigned long ANIM_INTERVAL_MS   = 350;
-const unsigned long DIM_AFTER_MS       = 30000;
-const uint8_t BRIGHT_NORMAL = 10;
+const unsigned long SENSOR_INTERVAL_MS = 2000;   // "check every 2 seconds"
+const unsigned long ANIM_INTERVAL_MS   = 350;    // face animation speed
+const unsigned long DIM_AFTER_MS       = 30000;  // dim if nothing changes for 30 s
+const uint8_t BRIGHT_NORMAL = 10;                // 0-15
 const uint8_t BRIGHT_DIM    = 3;
 
+// Mood thresholds
+const float MOISTURE_THIRSTY = 30.0;  // % below this -> Thirsty
+const float MOISTURE_SOGGY   = 80.0;  // % above this -> Soggy (over-watered)
+const float TEMP_COLD        = 18.0;  // C below this -> Cold
+const int   LIGHT_DARK       = 100;   // lux below this -> Sleepy
 
-const float MOISTURE_THIRSTY = 30.0;
-const float MOISTURE_SOGGY   = 80.0;
-const float TEMP_COLD        = 18.0;
-const int   LIGHT_DARK       = 100;
-
-
+// One simulated sample = 30 minutes of plant time (used for watering prediction)
 const float HOURS_PER_SAMPLE = 0.5;
 
-
+// ---------------------------------------------------------------- colors
+// TinyScreen 8-bit color format is BBBGGGRR
 #define RGB8(r, g, b) ((uint8_t)((((b) & 7) << 5) | (((g) & 7) << 2) | ((r) & 3)))
 
 const uint8_t C_BG       = TS_8b_Black;
@@ -34,19 +78,23 @@ const uint8_t C_BAD      = TS_8b_Red;
 const uint8_t C_POT      = TS_8b_Brown;
 const uint8_t C_POT_RIM  = TS_8b_DarkBrown;
 const uint8_t C_LEAF     = TS_8b_DarkGreen;
-const uint8_t C_LEAF_ROT = RGB8(1, 3, 0);
+const uint8_t C_LEAF_ROT = RGB8(1, 3, 0);   // olive: leaves of an over-watered plant
 const uint8_t C_CHEEK    = RGB8(3, 2, 5);
 const uint8_t C_WATER    = RGB8(1, 6, 7);
 
-
+// ---------------------------------------------------------------- types
 enum Mood { MOOD_HAPPY, MOOD_THIRSTY, MOOD_COLD, MOOD_SLEEPY, MOOD_SOGGY, MOOD_COUNT };
-enum View { VIEW_BUDDY, VIEW_PET, VIEW_VITALS, VIEW_GRAPH_SOIL, VIEW_GRAPH_TEMP, VIEW_GRAPH_LIGHT, VIEW_COUNT };
+enum View {
+#if USE_SCENE
+  VIEW_BUDDY,
+#endif
+  VIEW_PET, VIEW_VITALS, VIEW_GRAPH_SOIL, VIEW_GRAPH_TEMP, VIEW_GRAPH_LIGHT, VIEW_COUNT };
 enum Metric { MET_SOIL, MET_TEMP, MET_LIGHT, MET_COUNT };
 
 struct Sample {
-  uint16_t minuteOfDay;
-  uint8_t  moisture;
-  float    temp;
+  uint16_t minuteOfDay;  // simulated clock
+  uint8_t  moisture;     // %
+  float    temp;         // C
   uint16_t lux;
 };
 
@@ -58,7 +106,12 @@ struct Preset {
 
 const char *MOOD_NAMES[MOOD_COUNT] = { "HAPPY", "THIRSTY", "COLD", "SLEEPY", "SOGGY" };
 
-
+// ---------------------------------------------------------------- sample data
+// Two simulated days starting 06:00, one row per 30 min (96 rows, then it loops):
+//   Day 1: 06:00-16:00 happy, 16:30-20:30 thirsty (soil dries out),
+//          21:00 watered properly (21% -> 62%) -> sleepy (dark), 00:30-05:30 cold
+//   Day 2: soil dries out again (thirsty from 20:00), then 21:00 OVER-watered
+//          (28% -> 94%) -> soggy, and the soil stays too wet through the night
 const Sample TIMELINE[] = {
   {  360, 50, 18.3f,  120 }, {  390, 49, 18.8f,  219 }, {  420, 48, 19.2f,  316 }, {  450, 47, 19.8f,  411 },
   {  480, 46, 20.3f,  502 }, {  510, 45, 20.9f,  588 }, {  540, 44, 21.5f,  669 }, {  570, 43, 22.1f,  742 },
@@ -87,25 +140,29 @@ const Sample TIMELINE[] = {
 };
 const uint8_t TIMELINE_LEN = sizeof(TIMELINE) / sizeof(TIMELINE[0]);
 
-
+// Fixed readings used when a mood is forced with the upper-left button
 const Preset PRESETS[MOOD_COUNT] = {
-  { 55, 23.0, 600 },
-  { 18, 24.0, 700 },
-  { 60, 14.5, 400 },
-  { 60, 21.0,   3 },
-  { 92, 22.0, 600 },
+  { 55, 23.0, 600 },  // happy
+  { 18, 24.0, 700 },  // thirsty
+  { 60, 14.5, 400 },  // cold
+  { 60, 21.0,   3 },  // sleepy
+  { 92, 22.0, 600 },  // soggy (over-watered)
 };
 
-
+// ---------------------------------------------------------------- state
 TinyScreen display = TinyScreen(TinyScreenPlus);
 
 float moisture = 0, temperature = 0;
 int   lightLevel = 0;
 Mood  mood = MOOD_HAPPY;
+#if USE_SCENE
 View  view = VIEW_BUDDY;
+#else
+View  view = VIEW_PET;
+#endif
 
-uint8_t simIndex = 0;
-uint8_t simMode  = 0;
+uint8_t simIndex = 0;     // position in TIMELINE
+uint8_t simMode  = 0;     // 0 = timeline, 1..5 = force mood (simMode-1)
 bool    paused   = false;
 
 const uint8_t HISTORY_LEN = 40;
@@ -122,40 +179,57 @@ uint8_t lastButtons = 0;
 bool    dimmed = false;
 bool    blinking = false;
 
-
+// ================================================================ sensors
+// Each read*() returns calibrated units: moisture %, temperature C, light lux.
 
 uint16_t simulatedClock() { return TIMELINE[simIndex].minuteOfDay; }
 
-float readSoilMoisture() {
-#if USE_SIMULATED_DATA
-  return simMode ? PRESETS[simMode - 1].moisture : TIMELINE[simIndex].moisture;
-#else
+#if !USE_SIMULATED_DATA
+// Latest good reading from each Wireling. If a sensor misses a read, its last good value is kept
+// (so one hiccup doesn't put a 0 on the screen or the dashboard) and its OK flag goes false.
+bool  moistureOk = false, tempOk = false, lightOk = false;
+float lastMoisture = 50, lastTemperature = 22;
+int   lastLight = 100;
 
-  return 0;
+void refreshSensors() {
+  SensorReadings s = sensorsRead();
+  moistureOk = s.moistureOk;  tempOk = s.tempOk;  lightOk = s.lightOk;
+  if (moistureOk) lastMoisture    = s.moisturePct;
+  if (tempOk)     lastTemperature = s.tempC;
+  if (lightOk)    lastLight       = (int)(s.lux + 0.5f);
+}
+#endif
+
+float readSoilMoisture() {
+  if (simMode) return PRESETS[simMode - 1].moisture;      // demo preset (upper-left button)
+#if USE_SIMULATED_DATA
+  return TIMELINE[simIndex].moisture;
+#else
+  return lastMoisture;                                    // soil moisture Wireling, 0-100 %
 #endif
 }
 
 float readTemperature() {
+  if (simMode) return PRESETS[simMode - 1].temp;
 #if USE_SIMULATED_DATA
-  return simMode ? PRESETS[simMode - 1].temp : TIMELINE[simIndex].temp;
+  return TIMELINE[simIndex].temp;
 #else
-
-  return 0;
+  return lastTemperature;                                 // PCT2075 temperature Wireling, deg C
 #endif
 }
 
 int readLightLevel() {
+  if (simMode) return PRESETS[simMode - 1].lux;
 #if USE_SIMULATED_DATA
-  return simMode ? PRESETS[simMode - 1].lux : TIMELINE[simIndex].lux;
+  return TIMELINE[simIndex].lux;
 #else
-
-  return 0;
+  return lastLight;                                       // TSL2572 light Wireling, lux
 #endif
 }
 
-
+// ================================================================ mood logic
 Mood computeMood(float m, float t, int l) {
-  if (m > MOISTURE_SOGGY)   return MOOD_SOGGY;
+  if (m > MOISTURE_SOGGY)   return MOOD_SOGGY;    // soil problems first (the two can't both be true)
   if (m < MOISTURE_THIRSTY) return MOOD_THIRSTY;
   if (t < TEMP_COLD)        return MOOD_COLD;
   if (l < LIGHT_DARK)       return MOOD_SLEEPY;
@@ -164,15 +238,16 @@ Mood computeMood(float m, float t, int l) {
 
 uint8_t moodColor(Mood m) {
   switch (m) {
-    case MOOD_THIRSTY: return RGB8(3, 5, 0);
-    case MOOD_COLD:    return RGB8(1, 5, 7);
-    case MOOD_SLEEPY:  return RGB8(0, 3, 1);
-    case MOOD_SOGGY:   return RGB8(0, 4, 4);
+    case MOOD_THIRSTY: return RGB8(3, 5, 0);  // wilted yellow
+    case MOOD_COLD:    return RGB8(1, 5, 7);  // icy blue
+    case MOOD_SLEEPY:  return RGB8(0, 3, 1);  // dim green
+    case MOOD_SOGGY:   return RGB8(0, 4, 4);  // waterlogged teal
     default:           return TS_8b_Green;
   }
 }
 
-
+// Least-squares slope of the last few moisture samples, in % per sample.
+// Returns 0 (= "steady") until there are at least 3 samples.
 float soilSlope() {
   uint8_t n = historyCount < 8 ? historyCount : 8;
   if (n < 3) return 0;
@@ -184,7 +259,8 @@ float soilSlope() {
   return (n * sxy - sx * sy) / (n * sxx - sx * sx);
 }
 
-
+// Hours until the soil is dry enough to need water.
+// Returns <0 if no watering is predicted, 0 if it needs water now.
 float predictHoursToWater() {
   if (moisture < MOISTURE_THIRSTY) return 0;
   float slope = soilSlope();
@@ -192,7 +268,8 @@ float predictHoursToWater() {
   return (moisture - MOISTURE_THIRSTY) / -slope * HOURS_PER_SAMPLE;
 }
 
-
+// Hours until an over-watered plant's soil drops back under the soggy limit.
+// Returns <0 if the soil isn't drying out (yet).
 float predictHoursToDry() {
   float slope = soilSlope();
   if (slope > -0.05) return -1;
@@ -214,13 +291,17 @@ void pushHistory(float m, float t, float l) {
   historyCount++;
 }
 
-
+// ================================================================ drawing helpers
 void formatClock(char *buf, size_t len) {
   if (simMode) {
     snprintf(buf, len, "DEMO");
   } else {
+#if USE_SIMULATED_DATA
     uint16_t t = simulatedClock();
     snprintf(buf, len, "%02u:%02u%s", t / 60, t % 60, paused ? " ||" : "");
+#else
+    snprintf(buf, len, "LIVE%s", paused ? " ||" : "");   // no clock on the board: the dashboard stamps the time
+#endif
   }
 }
 
@@ -238,12 +319,12 @@ void drawHeader(const char *title, uint8_t color) {
   display.setCursor(2, 0);
   display.print(title);
   display.fontColor(C_MUTED, C_BG);
-  display.setCursor(78 - display.getPrintWidth(clk), 0);
+  display.setCursor(78 - display.getPrintWidth(clk), 0);  // right-aligned, left of the page dots
   display.print(clk);
   drawViewDots();
 }
 
-
+// Horizontal progress bar with a threshold tick (and an optional second tick: pass thresh2 < 0 for none)
 void drawHBar(uint8_t x, uint8_t y, uint8_t w, uint8_t h, float frac, float thresh, float thresh2, uint8_t color) {
   frac = constrain(frac, 0.0f, 1.0f);
   uint8_t fw = (uint8_t)(frac * w);
@@ -264,17 +345,14 @@ void drawVBar(uint8_t x, uint8_t top, uint8_t w, uint8_t h, float frac, uint8_t 
   if (fh) display.drawRect(x, top + h - fh, w, fh, TSRectangleFilled, color);
 }
 
-
-uint8_t dimColor(uint8_t c) { return (uint8_t)(((c & 0xC0) >> 1) | ((c & 0x18) >> 1) | ((c >> 1) & 1)); }
-
-
+// Tiny 3x5 pixel font, A-Z, used for the small labels (S/T/L, SOIL, TEMP, LUX) and the BUDDY screen's status word
 #define G3(r0, r1, r2, r3, r4) ((uint16_t)(((r0) << 12) | ((r1) << 9) | ((r2) << 6) | ((r3) << 3) | (r4)))
 const uint16_t TINY_FONT[26] = {
-  G3(2,5,7,5,5), G3(6,5,6,5,6), G3(3,4,4,4,3), G3(6,5,5,5,6), G3(7,4,6,4,7), G3(7,4,6,4,4),
-  G3(3,4,5,5,3), G3(5,5,7,5,5), G3(7,2,2,2,7), G3(1,1,1,5,2), G3(5,5,6,5,5), G3(4,4,4,4,7),
-  G3(5,7,7,5,5), G3(6,5,5,5,5), G3(2,5,5,5,2), G3(6,5,6,4,4), G3(2,5,5,7,3), G3(6,5,6,5,5),
-  G3(3,4,2,1,6), G3(7,2,2,2,2), G3(5,5,5,5,7), G3(5,5,5,5,2), G3(5,5,7,7,5), G3(5,5,2,5,5),
-  G3(5,5,2,2,2), G3(7,1,2,4,7)
+  G3(2,5,7,5,5), G3(6,5,6,5,6), G3(3,4,4,4,3), G3(6,5,5,5,6), G3(7,4,6,4,7), G3(7,4,6,4,4), // A B C D E F
+  G3(3,4,5,5,3), G3(5,5,7,5,5), G3(7,2,2,2,7), G3(1,1,1,5,2), G3(5,5,6,5,5), G3(4,4,4,4,7), // G H I J K L
+  G3(5,7,7,5,5), G3(6,5,5,5,5), G3(2,5,5,5,2), G3(6,5,6,4,4), G3(2,5,5,7,3), G3(6,5,6,5,5), // M N O P Q R
+  G3(3,4,2,1,6), G3(7,2,2,2,2), G3(5,5,5,5,7), G3(5,5,5,5,2), G3(5,5,7,7,5), G3(5,5,2,5,5), // S T U V W X
+  G3(5,5,2,2,2), G3(7,1,2,4,7)                                                              // Y Z
 };
 
 uint8_t tinyTextWidth(const char *s) { return strlen(s) * 4 - 1; }
@@ -289,8 +367,16 @@ void drawTinyText(uint8_t x, uint8_t y, const char *s, uint8_t color) {
   }
 }
 
-void drawBuddyView(bool full) {
+#if USE_SCENE
+// ================================================================ BUDDY view: the whole picture
+// Halve each colour channel of an 8-bit BBBGGGRR colour (used for "out of range" symbols)
+uint8_t dimColor(uint8_t c) { return (uint8_t)(((c & 0xC0) >> 1) | ((c & 0x18) >> 1) | ((c >> 1) & 1)); }
 
+void drawBuddyView(bool full) {
+  // The symbols show the live readings (region 1 = drop, 2 = thermometer, 3 = sun):
+  //  - drop fills from the bottom with soil moisture (0-100 %)
+  //  - thermometer fills from the bottom with temperature (0-40 C)
+  //  - sun brightens in 4 steps with light (log scale)
   static uint8_t top[4], bot[4];
   static bool measured = false;
   if (!measured) {
@@ -304,12 +390,12 @@ void drawBuddyView(bool full) {
     measured = true;
   }
   float fr[4] = { 0, constrain(moistureFrac(), 0, 1), constrain(tempFrac(), 0, 1), constrain(lightFrac(), 0, 1) };
-  uint8_t level[4];
+  uint8_t level[4];                      // rows at or below this y are "full"
   for (uint8_t r = 1; r < 3; r++) level[r] = bot[r] + 1 - (uint8_t)(fr[r] * (bot[r] - top[r] + 1) + 0.5f);
   uint8_t sunDim = fr[3] < 0.2f ? 3 : fr[3] < 0.4f ? 2 : fr[3] < 0.6f ? 1 : 0;
   if (full) display.clearScreen();
 
-
+  // the picture, streamed row by row (symbols whose reading is out of range are drawn dull)
   uint8_t row[SCENE_W];
   display.setX(SCENE_X, SCENE_X + SCENE_W - 1);
   display.setY(0, SCENE_H - 1);
@@ -326,35 +412,37 @@ void drawBuddyView(bool full) {
   }
   display.endTransfer();
 
-
+  // title: redrawn crisply (at 64 pixels tall the picture's own lettering turns to mush)
   display.drawRect(37, 1, 22, 5, TSRectangleFilled, RGB8(0, 0, 1));
   drawTinyText(48 - tinyTextWidth("BUDDY") / 2, 1, "BUDDY", RGB8(1, 6, 4));
 
-
+  // status word in the picture's status box (where the picture says "OK")
   const char *label = (mood == MOOD_HAPPY) ? "OK" : MOOD_NAMES[mood];
   uint8_t color = (mood == MOOD_HAPPY) ? RGB8(1, 6, 4) : (mood == MOOD_SLEEPY ? RGB8(2, 3, 5) : moodColor(mood));
-
+  // the box's inside spans x 14..80, y 55..59: centre the word in it (the longest, THIRSTY, is 27 px wide)
   display.drawRect(14, 55, 67, 5, TSRectangleFilled, RGB8(0, 0, 1));
   drawTinyText(47 - tinyTextWidth(label) / 2, 55, label, color);
 }
+#endif
 
 float moistureFrac() { return moisture / 100.0f; }
-float tempFrac()     { return temperature / 40.0f; }
-float lightFrac()    { return log10(lightLevel + 1.0f) / 3.0f; }
+float tempFrac()     { return temperature / 40.0f; }                    // 0-40 C
+float lightFrac()    { return log10(lightLevel + 1.0f) / 3.0f; }       // 1-1000 lux, log scale
 
-
+// ================================================================ PET view
+// Layout: mini gauges x0-23, plant x30-66, effects x67-95
 const uint8_t HEAD_X = 30, HEAD_Y = 18, HEAD_W = 36, HEAD_H = 28;
 
 void drawMiniGauges() {
   float fr[3]  = { moistureFrac(), tempFrac(), lightFrac() };
   bool  ok[3]  = { moisture >= MOISTURE_THIRSTY && moisture <= MOISTURE_SOGGY,
                    temperature >= TEMP_COLD, lightLevel >= LIGHT_DARK };
-
+  // one row per reading: icon (dimmed when out of range) + a small level bar next to it
   for (uint8_t i = 0; i < 3; i++) {
     uint8_t y = 12 + i * 17;
     uint8_t bad = (i == 0 && moisture > MOISTURE_SOGGY) ? moodColor(MOOD_SOGGY) : C_BAD;
-    drawTinyText(3, y + 4, i == 0 ? "S" : i == 1 ? "T" : "L", ok[i] ? C_TEXT : bad);
-    drawVBar(19, y, 4, SPRITE_SIZE, fr[i], ok[i] ? C_OK : bad);
+    drawTinyText(3, y + 5, i == 0 ? "S" : i == 1 ? "T" : "L", ok[i] ? C_TEXT : bad);   // S soil, T temperature, L light
+    drawVBar(10, y, 7, 14, fr[i], ok[i] ? C_OK : bad);
   }
 }
 
@@ -373,19 +461,19 @@ void drawEyes(uint8_t frame) {
         display.drawPixel(55, 26, C_TEXT);
       }
       break;
-    case MOOD_THIRSTY:
+    case MOOD_THIRSTY:  // droopy half-closed eyes with worried brows
       display.drawRect(39, 28, 4, 3, TSRectangleFilled, C_FACE);
       display.drawRect(54, 28, 4, 3, TSRectangleFilled, C_FACE);
       display.drawLine(37, 26, 42, 24, C_FACE);
       display.drawLine(54, 24, 59, 26, C_FACE);
       break;
-    case MOOD_COLD:
+    case MOOD_COLD:     // squeezed > < eyes
       display.drawLine(39, 25, 42, 27, C_FACE);
       display.drawLine(42, 27, 39, 29, C_FACE);
       display.drawLine(57, 25, 54, 27, C_FACE);
       display.drawLine(54, 27, 57, 29, C_FACE);
       break;
-    case MOOD_SLEEPY:
+    case MOOD_SLEEPY:   // closed eyes
       display.drawLine(39, 29, 42, 29, C_FACE);
       display.drawPixel(38, 28, C_FACE);
       display.drawPixel(43, 28, C_FACE);
@@ -393,7 +481,7 @@ void drawEyes(uint8_t frame) {
       display.drawPixel(53, 28, C_FACE);
       display.drawPixel(58, 28, C_FACE);
       break;
-    case MOOD_SOGGY:
+    case MOOD_SOGGY:    // bulging eyes, pupils looking down at the puddle
       display.drawRect(38, 24, 6, 6, TSRectangleFilled, C_TEXT);
       display.drawRect(53, 24, 6, 6, TSRectangleFilled, C_TEXT);
       display.drawRect(40, 27, 2, 3, TSRectangleFilled, C_FACE);
@@ -416,7 +504,7 @@ void drawMouth(uint8_t frame) {
       display.drawLine(45, 37, 51, 37, C_FACE);
       display.drawLine(51, 37, 53, 39, C_FACE);
       break;
-    case MOOD_COLD: {
+    case MOOD_COLD: {   // chattering zig-zag, flips each frame
       uint8_t px = 42, py = 37;
       for (uint8_t x = 44; x <= 54; x += 2) {
         uint8_t y = ((x / 2 + frame) & 1) ? 35 : 38;
@@ -428,7 +516,7 @@ void drawMouth(uint8_t frame) {
     case MOOD_SLEEPY:
       display.drawRect(47, 36, 3, 3, TSRectangleNoFill, C_FACE);
       break;
-    case MOOD_SOGGY:
+    case MOOD_SOGGY:    // open mouth, gasping
       display.drawRect(45, 35, 7, 5, TSRectangleFilled, C_FACE);
       break;
     default: break;
@@ -437,9 +525,9 @@ void drawMouth(uint8_t frame) {
 
 void drawLeaves() {
   display.clearWindow(36, 10, 26, 8);
-  uint8_t leaf = (mood == MOOD_SOGGY) ? C_LEAF_ROT : C_LEAF;
+  uint8_t leaf = (mood == MOOD_SOGGY) ? C_LEAF_ROT : C_LEAF;   // over-watered leaves go olive
   display.drawLine(48, 11, 48, 17, leaf);
-  if (mood == MOOD_THIRSTY || mood == MOOD_SOGGY) {
+  if (mood == MOOD_THIRSTY || mood == MOOD_SOGGY) {  // limp leaves droop down
     display.drawLine(47, 12, 41, 16, leaf);
     display.drawLine(47, 13, 42, 17, leaf);
     display.drawLine(49, 12, 55, 16, leaf);
@@ -453,26 +541,26 @@ void drawLeaves() {
 void drawPlant() {
   uint8_t hc = moodColor(mood);
   drawLeaves();
-
+  // head with rounded corners
   display.drawRect(HEAD_X, HEAD_Y, HEAD_W, HEAD_H, TSRectangleFilled, hc);
   display.drawPixel(HEAD_X, HEAD_Y, C_BG);
   display.drawPixel(HEAD_X + HEAD_W - 1, HEAD_Y, C_BG);
   display.drawPixel(HEAD_X, HEAD_Y + HEAD_H - 1, C_BG);
   display.drawPixel(HEAD_X + HEAD_W - 1, HEAD_Y + HEAD_H - 1, C_BG);
-
+  // cheeks
   if (mood == MOOD_HAPPY) {
     display.drawRect(34, 33, 3, 2, TSRectangleFilled, C_CHEEK);
     display.drawRect(59, 33, 3, 2, TSRectangleFilled, C_CHEEK);
   }
-
+  // pot
   display.drawRect(32, 47, 32, 4, TSRectangleFilled, C_POT_RIM);
   for (uint8_t i = 0; i < 10; i++)
     display.drawLine(34 + i / 3, 51 + i, 61 - i / 3, 51 + i, C_POT);
-
+  // puddle of excess water under the pot
   if (mood == MOOD_SOGGY) display.drawRect(24, 61, 48, 3, TSRectangleFilled, C_WATER);
 }
 
-
+// Small per-frame effects around the plant
 void drawEffects(uint8_t frame) {
   switch (mood) {
     case MOOD_HAPPY: {
@@ -480,14 +568,14 @@ void drawEffects(uint8_t frame) {
       if (shouldBlink != blinking) { blinking = shouldBlink; drawEyes(frame); }
       break;
     }
-    case MOOD_THIRSTY: {
+    case MOOD_THIRSTY: {  // sweat drop sliding down the side of the head
       display.clearWindow(67, 16, 6, 32);
       uint8_t y = 18 + (frame % 6) * 4;
       display.drawPixel(69, y, C_WATER);
       display.drawRect(68, y + 1, 3, 3, TSRectangleFilled, C_WATER);
       break;
     }
-    case MOOD_COLD: {
+    case MOOD_COLD: {     // shiver lines alternate sides, teeth chatter
       display.clearWindow(25, 20, 4, 24);
       display.clearWindow(67, 20, 4, 24);
       uint8_t off = (frame & 1) ? 0 : 2;
@@ -498,7 +586,7 @@ void drawEffects(uint8_t frame) {
       drawMouth(frame);
       break;
     }
-    case MOOD_SLEEPY: {
+    case MOOD_SLEEPY: {   // Zzz floating up
       display.clearWindow(68, 11, 28, 34);
       display.fontColor(C_MUTED, C_BG);
       uint8_t step = frame % 4;
@@ -507,7 +595,7 @@ void drawEffects(uint8_t frame) {
       if (step >= 2) { display.fontColor(C_TEXT, C_BG); display.setCursor(84, 22 - step * 3); display.print("Z"); }
       break;
     }
-    case MOOD_SOGGY: {
+    case MOOD_SOGGY: {    // water drips off both sides, the puddle ripples
       display.clearWindow(25, 14, 6, 44);
       display.clearWindow(66, 14, 6, 44);
       uint8_t yl = 16 + (frame % 7) * 6;
@@ -533,7 +621,7 @@ void drawPetView() {
   drawEffects(animFrame);
 }
 
-
+// ================================================================ VITALS view
 void drawVitalRow(uint8_t y, const char *label, const char *value, bool ok,
                   const char *badText, float frac, float thresh, float thresh2, uint8_t badColor) {
   display.clearWindow(0, y, 96, 14);
@@ -554,7 +642,7 @@ void drawVitalsView(bool full) {
   snprintf(buf, sizeof(buf), "%d %%", (int)moisture);
   bool wet = moisture > MOISTURE_SOGGY;
   drawVitalRow(12, "SOIL", buf, moisture >= MOISTURE_THIRSTY && !wet, wet ? "WET" : "DRY",
-               moistureFrac(), MOISTURE_THIRSTY / 100.0f, MOISTURE_SOGGY / 100.0f,
+               moistureFrac(), MOISTURE_THIRSTY / 100.0f, MOISTURE_SOGGY / 100.0f,   // two ticks: healthy band
                wet ? moodColor(MOOD_SOGGY) : C_BAD);
   snprintf(buf, sizeof(buf), "%d.%d C", (int)temperature, (int)(temperature * 10) % 10);
   drawVitalRow(29, "TEMP", buf, temperature >= TEMP_COLD, "COLD",
@@ -564,16 +652,16 @@ void drawVitalsView(bool full) {
                lightFrac(), log10(LIGHT_DARK + 1.0f) / 3.0f, -1, C_MUTED);
 }
 
-
-const uint8_t G_X = 14, G_Y = 12, G_W = 80, G_H = 38;
+// ================================================================ GRAPH views (soil / temp / light)
+const uint8_t G_X = 14, G_Y = 12, G_W = 80, G_H = 38;  // graph box
 
 struct GraphInfo {
-  const char *title;
-  const char *topLabel;
-  const char *botLabel;
+  const char *title;     // header text
+  const char *topLabel;  // y-axis label at the top of the graph
+  const char *botLabel;  // y-axis label at the bottom
   uint8_t     lineColor;
-  float       threshold;
-  float       upper;
+  float       threshold; // below this value the plant is unhappy
+  float       upper;     // above this value it is unhappy too (< 0 = no upper limit)
 };
 
 const GraphInfo GRAPHS[MET_COUNT] = {
@@ -582,12 +670,12 @@ const GraphInfo GRAPHS[MET_COUNT] = {
   { "LIGHT", "1k",  "1",  TS_8b_Yellow,   (float)LIGHT_DARK, -1 },
 };
 
-
+// Map a value to 0..1 on the graph's vertical axis
 float graphFrac(uint8_t metric, float v) {
   float f;
-  if (metric == MET_SOIL)      f = v / 100.0f;
-  else if (metric == MET_TEMP) f = (v - 10.0f) / 25.0f;
-  else                         f = log10(v + 1.0f) / 3.0f;
+  if (metric == MET_SOIL)      f = v / 100.0f;                 // 0-100 %
+  else if (metric == MET_TEMP) f = (v - 10.0f) / 25.0f;        // 10-35 C
+  else                         f = log10(v + 1.0f) / 3.0f;     // 1-1000 lx, log scale
   return constrain(f, 0.0f, 1.0f);
 }
 
@@ -595,7 +683,7 @@ uint8_t graphY(uint8_t metric, float v) {
   return G_Y + G_H - 1 - (uint8_t)(graphFrac(metric, v) * (G_H - 1));
 }
 
-
+// Bottom line: soil shows the watering prediction, temp/light show the current value + status
 void drawGraphCaption(uint8_t metric) {
   char buf[24];
   uint8_t color = C_TEXT;
@@ -634,7 +722,7 @@ void drawGraphView(uint8_t metric, bool full) {
   if (full) display.clearScreen();
   drawHeader(g.title, g.lineColor);
 
-
+  // y-axis labels (clear the label column first: label widths differ between graphs)
   display.clearWindow(0, G_Y - 1, G_X - 1, G_H + 2);
   display.fontColor(C_MUTED, C_BG);
   display.setCursor(0, G_Y - 1);
@@ -642,17 +730,17 @@ void drawGraphView(uint8_t metric, bool full) {
   display.setCursor(0, G_Y + G_H - 9);
   display.print(g.botLabel);
 
-
+  // plot area, axis and dashed threshold line
   display.clearWindow(G_X, G_Y, G_W, G_H);
   display.drawLine(G_X - 1, G_Y, G_X - 1, G_Y + G_H - 1, C_TRACK);
   uint8_t ty = graphY(metric, g.threshold);
   for (uint8_t x = G_X; x < G_X + G_W; x += 3) display.drawPixel(x, ty, C_BAD);
-  if (g.upper >= 0) {
+  if (g.upper >= 0) {   // second limit, drawn in the soggy colour with a different dash
     uint8_t uy = graphY(metric, g.upper);
     for (uint8_t x = G_X; x < G_X + G_W; x += 4) display.drawLine(x, uy, x + 1, uy, moodColor(MOOD_SOGGY));
   }
 
-
+  // data line: red below the lower limit, teal above the upper limit
   for (uint8_t i = 1; i < historyCount; i++) {
     uint8_t x0 = G_X + (i - 1) * 2, x1 = G_X + i * 2;
     uint8_t c = data[i] < g.threshold ? C_BAD
@@ -664,10 +752,12 @@ void drawGraphView(uint8_t metric, bool full) {
   drawGraphCaption(metric);
 }
 
-
+// ================================================================ view control
 void redrawView(bool full) {
   switch (view) {
+#if USE_SCENE
     case VIEW_BUDDY: drawBuddyView(full); break;
+#endif
     case VIEW_PET:
       if (full) drawPetView();
       else { drawHeader(MOOD_NAMES[mood], moodColor(mood)); drawMiniGauges(); }
@@ -686,6 +776,9 @@ void wake() {
 }
 
 void takeReading() {
+#if !USE_SIMULATED_DATA
+  refreshSensors();
+#endif
   moisture    = readSoilMoisture();
   temperature = readTemperature();
   lightLevel  = readLightLevel();
@@ -696,11 +789,24 @@ void takeReading() {
   mood = newMood;
   if (moodChanged) wake();
 
-  SerialUSB.print(simulatedClock()); SerialUSB.print(',');
+#if USE_SIMULATED_DATA
+  SerialUSB.print(simulatedClock()); SerialUSB.print(',');   // sample clock, minutes since midnight
+#else
+  static unsigned long readingSeq = 0;
+  SerialUSB.print(readingSeq++);     SerialUSB.print(',');   // reading counter (the dashboard stamps the real time)
+#endif
   SerialUSB.print(moisture);         SerialUSB.print(',');
   SerialUSB.print(temperature);      SerialUSB.print(',');
   SerialUSB.print(lightLevel);       SerialUSB.print(',');
-  SerialUSB.println(MOOD_NAMES[mood]);
+  SerialUSB.print(MOOD_NAMES[mood]);
+#if !USE_SIMULATED_DATA
+  // sensor health + whether this reading is real or a demo preset, for the dashboard
+  SerialUSB.print(moistureOk ? F(",Mok") : F(",MERR"));
+  SerialUSB.print(tempOk     ? F(",Tok") : F(",TERR"));
+  SerialUSB.print(lightOk    ? F(",Lok") : F(",LERR"));
+  SerialUSB.print(simMode    ? F(",PRESET") : F(",LIVE"));
+#endif
+  SerialUSB.println();
 
   redrawView(moodChanged && view == VIEW_PET);
 
@@ -727,7 +833,7 @@ void handleButtons() {
   if (pressed & TSButtonUpperRight) { paused = !paused; redrawView(false); }
 }
 
-
+// ================================================================ setup / loop
 void setup() {
   Wire.begin();
   SerialUSB.begin(9600);
@@ -737,12 +843,20 @@ void setup() {
   display.setFont(thinPixel7_10ptFontInfo);
   display.clearScreen();
 
+#if !USE_SIMULATED_DATA
+  // Sensors come up after the display, with no long delays, so a missing sensor can't freeze the boot.
+  Wireling.begin();                  // the adapter's I2C multiplexer
+  Wireling.selectPort(LIGHT_PORT);
+  tsl2572Begin();                    // light sensor needs a one-time setup; temperature and moisture don't
+#endif
+
   takeReading();
   redrawView(true);
   lastSensorMs = lastAnimMs = lastActivityMs = millis();
 }
 
-
+// Same structure as the plan (read -> mood -> render every 2 s), but driven by
+// millis() instead of delay(2000) so the buttons and animations stay responsive.
 void loop() {
   unsigned long now = millis();
 
@@ -750,7 +864,11 @@ void loop() {
 
   if (now - lastSensorMs >= SENSOR_INTERVAL_MS) {
     lastSensorMs = now;
+#if USE_SIMULATED_DATA
     takeReading();
+#else
+    if (!paused) takeReading();      // pause (upper-right) freezes the real readings too
+#endif
   }
 
   if (now - lastAnimMs >= ANIM_INTERVAL_MS) {
@@ -759,7 +877,7 @@ void loop() {
     if (view == VIEW_PET) drawEffects(animFrame);
   }
 
-
+  // Power saving: dim the OLED when the mood hasn't changed for a while
   if (!dimmed && now - lastActivityMs > DIM_AFTER_MS) {
     display.setBrightness(BRIGHT_DIM);
     dimmed = true;

@@ -81,6 +81,7 @@
   }
   .wrap { max-width: 1080px; margin: 0 auto; padding: 16px 16px 40px; }
 
+  /* ---------- header ---------- */
   header.top {
     display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
     justify-content: space-between; margin-bottom: 14px;
@@ -113,6 +114,7 @@
   .dot.stale { background: var(--warning); }
   .note { color: var(--text-muted); }
 
+  /* ---------- controls row ---------- */
   .controls {
     display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px;
   }
@@ -146,6 +148,7 @@
   .plant-tune summary { cursor: pointer; margin-bottom: 10px; }
   label.inline { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 13px; }
 
+  /* ---------- grid ---------- */
   .grid { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 760px) {
     .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
@@ -160,6 +163,7 @@
   }
   .card h2 { font-size: 14px; margin: 0 0 10px; color: var(--text-secondary); font-weight: 600; }
 
+  /* ---------- hero / pet ---------- */
   .hero { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); align-items: center; }
   @media (min-width: 640px) { .hero { grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); } }
   .device {
@@ -184,6 +188,7 @@
   .device .cap { color: #8a8a8a; font-size: 11px; text-align: center; margin-top: 8px; letter-spacing: .04em; }
   .mood-label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
   .swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+  /* Soggy is the 5th mood colour: too many hues to tell apart by colour alone, so it also gets a hatch pattern */
   .swatch.hatch {
     background: repeating-linear-gradient(45deg, currentColor 0 2px, transparent 2px 4px);
     box-shadow: inset 0 0 0 1.5px currentColor;
@@ -199,16 +204,18 @@
     border-radius: 999px; background: var(--surface-2); color: var(--text-primary);
   }
 
+  /* ---------- vitals ---------- */
   .tile .label { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px; font-weight: 600; }
   .tile .value { font-size: 30px; font-weight: 700; margin: 6px 0 2px; letter-spacing: -0.02em; }
   .tile .value small { font-size: 15px; color: var(--text-secondary); font-weight: 500; margin-left: 2px; }
   .tile .sub { color: var(--text-muted); font-size: 12px; }
+  /* metric icons (cut from plantguardian.jpg): drop = soil, thermometer = temperature, sun = light */
   .vrow { display: flex; align-items: center; gap: 12px; margin: 6px 0 2px; }
   .vrow .value { margin: 0; }
   .vicon { height: 46px; width: auto; flex: none; transition: filter .3s; }
   .chip-icon { height: 20px; width: auto; flex: none; transition: filter .3s; }
   .micon { height: 18px; width: auto; vertical-align: -4px; margin-right: 6px; }
-  .vicon.off, .chip-icon.off { filter: grayscale(.75) brightness(.6); }
+  .vicon.off, .chip-icon.off { filter: grayscale(.75) brightness(.6); }   /* out of range: icon goes dull (a status label sits next to it too) */
   .status-ico { display: inline-flex; }
   .status { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
   .status svg { flex: none; }
@@ -219,6 +226,7 @@
 
   .predict .value { font-size: 26px; }
 
+  /* ---------- chart ---------- */
   .chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
   .chart-head h2 { margin: 0; }
   .chart-box { position: relative; width: 100%; }
@@ -239,6 +247,7 @@
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .empty { color: var(--text-muted); font-size: 14px; padding: 30px 0; text-align: center; }
 
+  /* ---------- log & table ---------- */
   ul.log { list-style: none; margin: 0; padding: 0; }
   ul.log li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--grid); font-size: 14px; }
   ul.log li:first-child { border-top: 0; }
@@ -312,6 +321,7 @@
     <span id="errMsg" class="err" role="alert"></span>
   </div>
 
+  <!-- Simulation controls (same options as the TinyScreen+ buttons) -->
   <div class="controls" id="simControls">
     <button type="button" class="btn" id="playBtn" aria-pressed="false">
       <svg id="playIcon" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="3" y="2" width="3" height="10" fill="currentColor"/><rect x="8" y="2" width="3" height="10" fill="currentColor"/></svg>
@@ -344,6 +354,7 @@
 
   <main class="grid">
 
+    <!-- My plant -->
     <section class="card span-6" aria-labelledby="plantHead">
       <h2 id="plantHead">My plant</h2>
       <div class="plant-row">
@@ -367,6 +378,7 @@
       </details>
     </section>
 
+    <!-- Pet -->
     <section class="card span-6" aria-labelledby="moodName">
       <div class="hero">
         <div class="device">
@@ -389,10 +401,12 @@
       </div>
     </section>
 
+    <!-- Vitals -->
     <section class="card tile span-2" id="tileSoil"></section>
     <section class="card tile span-2" id="tileTemp"></section>
     <section class="card tile span-2" id="tileLight"></section>
 
+    <!-- History chart -->
     <section class="card span-4">
       <div class="chart-head">
         <h2 id="chartTitle">History</h2>
@@ -408,6 +422,7 @@
       <div class="legend" id="moodLegend" aria-label="Mood colors"></div>
     </section>
 
+    <!-- Prediction + log -->
     <section class="card span-2">
       <div class="predict tile">
         <div class="label">Next watering</div>
@@ -423,6 +438,7 @@
       </div>
     </section>
 
+    <!-- Activity log -->
     <section class="card span-6">
       <div class="chart-head">
         <h2>Activity log</h2>
@@ -435,6 +451,7 @@
       <div id="activity" class="activity"></div>
     </section>
 
+    <!-- Table view -->
     <section class="card span-6">
       <details>
         <summary>All readings (table)</summary>
@@ -458,6 +475,9 @@
 (() => {
   'use strict';
 
+  // ================================================================ constants (match PlantGuardian.ino)
+  // Care profiles per plant type: soil [thirsty below, soggy above] %, minimum temperature °C, minimum light lx.
+  // The first entry is the device's built-in default. A saved choice is read at start-up (changing it reloads the page).
   const PLANT_TYPES = [
     { id: 'general',   label: 'General houseplant', words: ['general', 'houseplant', 'default'],    soil: [30, 80], temp: 18, lux: 100 },
     { id: 'succulent', label: 'Succulent / cactus', words: ['succulent', 'cactus', 'cacti', 'aloe', 'jade', 'echeveria', 'haworthia'], soil: [10, 50], temp: 10, lux: 500 },
@@ -481,8 +501,8 @@
   const PLANT = savedPlant || { name: '', soil: PLANT_TYPES[0].soil, temp: PLANT_TYPES[0].temp, lux: PLANT_TYPES[0].lux, typeId: 'general' };
   const MOISTURE_THIRSTY = PLANT.soil[0], MOISTURE_SOGGY = PLANT.soil[1], TEMP_COLD = PLANT.temp, LIGHT_DARK = PLANT.lux;
   const SENSOR_INTERVAL_MS = 2000, ANIM_INTERVAL_MS = 350;
-  const HISTORY_MAX = 96;
-  const WATER_JUMP = 15;
+  const HISTORY_MAX = 1800;   // 96 sample rows, or about an hour of real readings (one every 2 s)
+  const WATER_JUMP = 15;    // moisture rise (percentage points) between readings that counts as a watering
   const MOODS = ['HAPPY', 'THIRSTY', 'COLD', 'SLEEPY', 'SOGGY'];
   const MOOD_INFO = {
     HAPPY:   { name: 'Happy',   var: '--mood-happy' },
@@ -492,6 +512,9 @@
     SOGGY:   { name: 'Soggy',   var: '--mood-soggy' },
   };
 
+  // Same 48h sample data as the sketch: [minuteOfDay, moisture %, temp C, lux]
+  //   Day 1: dries out, watered properly (21% -> 62%) at 21:00
+  //   Day 2: dries out, OVER-watered (28% -> 94%) at 21:00 -> soggy through the night
   const TIMELINE = [
     [360,50,18.3,120],[390,49,18.8,219],[420,48,19.2,316],[450,47,19.8,411],
     [480,46,20.3,502],[510,45,20.9,588],[540,44,21.5,669],[570,43,22.1,742],
@@ -523,6 +546,7 @@
   const computeMood = (m, t, l) =>
     m > MOISTURE_SOGGY ? 'SOGGY' : m < MOISTURE_THIRSTY ? 'THIRSTY' : t < TEMP_COLD ? 'COLD' : l < LIGHT_DARK ? 'SLEEPY' : 'HAPPY';
 
+  // Paint a mood swatch; soggy gets a hatch pattern on top of its colour
   function paintMood(node, mood) {
     node.classList.toggle('hatch', mood === 'SOGGY');
     node.style.color = `var(${MOOD_INFO[mood].var})`;
@@ -543,19 +567,22 @@
     return n;
   };
 
+  // ================================================================ state
   let source = 'sim';
-  let history = [];
-  let moodLog = [];
+  let history = [];         // {clock, moisture, temp, lux, mood, at}
+  let moodLog = [];         // activity: {day, clock, seq, type: 'mood'|'water', ...}
   let actFilter = 'all';
   let actSeq = 0;
-  let waterings = [];
+  let waterings = [];       // {reading, from, to}
   let metric = 'moisture';
   let hoverIdx = null;
 
+  // ================================================================ pixel-art pet (mirrors the sketch's drawing code)
   const canvas = $('pet');
   const ctx = canvas.getContext('2d');
-  const OX = 0, OY = 8;
+  const OX = 0, OY = 8;     // canvas shows the device's pet screen below the header: x0..95, y8..63
 
+  // 14x14 icons from plantguardian.jpg, same bytes as the sketch's sprites.h (8-bit BBBGGGRR, row by row)
   const SPRITES = /*SPRITES_BEGIN*/{
     moisture: [0,0,0,0,0,0,105,105,0,0,0,0,0,0,0,0,0,0,0,105,177,177,105,0,0,0,0,0,0,0,0,0,105,177,249,249,177,137,0,0,0,0,0,0,0,137,177,249,249,250,250,177,137,0,0,0,0,0,0,173,249,249,249,249,254,250,177,105,0,0,0,0,137,213,254,249,249,249,250,255,217,141,0,0,0,105,177,217,249,249,249,249,249,250,249,177,105,0,0,137,213,217,213,217,249,249,249,213,213,213,141,0,0,141,213,213,141,213,213,213,213,141,213,213,141,0,0,137,213,214,218,249,213,177,249,217,214,213,141,0,0,105,177,213,217,249,249,249,249,249,245,177,105,0,0,0,141,213,213,213,213,213,213,213,213,141,0,0,0,0,0,141,209,213,213,213,213,213,141,0,0,0,0,0,0,0,137,173,173,173,173,137,0,0,0,0],
     temperature: [0,0,0,0,0,177,214,177,0,0,0,0,0,0,0,0,0,0,0,218,218,218,145,0,0,0,0,0,0,0,0,0,145,218,250,218,145,0,0,0,0,0,0,0,0,0,145,218,250,218,145,0,0,0,0,0,0,0,0,0,145,218,250,218,145,0,0,0,0,0,0,0,0,0,145,183,87,151,145,0,0,0,0,0,0,0,0,0,145,183,87,151,145,0,0,0,0,0,0,0,0,0,145,183,87,151,145,0,0,0,0,0,0,0,0,0,182,151,87,119,182,0,0,0,0,0,0,0,0,178,151,123,87,87,151,177,0,0,0,0,0,0,0,214,119,87,87,87,115,214,0,0,0,0,0,0,0,182,119,87,87,87,115,182,0,0,0,0,0,0,0,0,218,119,83,119,218,0,0,0,0,0,0,0,0,0,0,178,214,182,0,0,0,0,0,0],
@@ -563,6 +590,7 @@
   }/*SPRITES_END*/;
   const SPRITE_SIZE = 14;
 
+  // metric icon images (transparent PNGs cut from the same picture), preloaded so re-renders don't flicker
   const ICON_FILES = { moisture: 'assets/icon-moisture.png', temperature: 'assets/icon-temperature.png', light: 'assets/icon-light.png' };
   const ICON_IMGS = {};
   Object.keys(ICON_FILES).forEach((k) => { const im = new Image(); im.src = ICON_FILES[k]; im.alt = ''; ICON_IMGS[k] = im; });
@@ -589,7 +617,7 @@
     ctx.fillRect(x - OX, y - OY, w, 1); ctx.fillRect(x - OX, y + h - 1 - OY, w, 1);
     ctx.fillRect(x - OX, y - OY, 1, h); ctx.fillRect(x + w - 1 - OX, y - OY, 1, h);
   };
-  const line = (x0, y0, x1, y1, c) => {
+  const line = (x0, y0, x1, y1, c) => {   // Bresenham
     const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
     const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
     let err = dx + dy;
@@ -605,31 +633,24 @@
   const Z_SMALL = ['111', '010', '111'];
   const Z_BIG = ['1111', '0010', '0100', '1000', '1111'];
 
-  function drawSprite(x, y, data, dim) {
-    for (let j = 0; j < SPRITE_SIZE; j++) for (let i = 0; i < SPRITE_SIZE; i++) {
-      let v = data[j * SPRITE_SIZE + i];
-      if (!v) continue;
-      if (dim) v = ((v & 0xC0) >> 1) | ((v & 0x18) >> 1) | ((v >> 1) & 1);
-      px(x + i, y + j, `rgb(${(v & 3) * 85},${Math.round(((v >> 2) & 7) * 255 / 7)},${Math.round(((v >> 5) & 7) * 255 / 7)})`);
-    }
-  }
+  // Left column of the device's pet screen: one letter + level bar per reading
   function drawGauges() {
     const r = history[history.length - 1];
     if (!r) return;
+    // One tidy column per reading: a crisp letter (S = soil, T = temperature, L = light) and a level bar beside it
+    const LETTERS = [['011', '100', '010', '001', '110'], ['111', '010', '010', '010', '010'], ['100', '100', '100', '100', '111']];
     const rows = [
-      [SPRITES.moisture, r.moisture / 100, r.moisture >= MOISTURE_THIRSTY && r.moisture <= MOISTURE_SOGGY, r.moisture > MOISTURE_SOGGY],
-      [SPRITES.temperature, r.temp / 40, r.temp >= TEMP_COLD, false],
-      [SPRITES.light, Math.log10(r.lux + 1) / 3, r.lux >= LIGHT_DARK, false],
+      [r.moisture / 100, r.moisture >= MOISTURE_THIRSTY && r.moisture <= MOISTURE_SOGGY, r.moisture > MOISTURE_SOGGY],
+      [r.temp / 40, r.temp >= TEMP_COLD, false],
+      [Math.log10(r.lux + 1) / 3, r.lux >= LIGHT_DARK, false],
     ];
-    rows.forEach(([spr, frac, ok, wet], i) => {
-      const y = 12 + i * 17;
-      const g = canvas.getContext('2d');
-      g.fillStyle = ok ? '#e8e8e8' : (wet ? '#2dd4bf' : '#ff3b30');
-      g.font = 'bold 6px monospace'; g.textBaseline = 'top';
-      g.fillText('STL'[i], 3, y + 3);
-      const fh = Math.floor(Math.max(0, Math.min(1, frac)) * SPRITE_SIZE);
-      rect(19, y, 4, SPRITE_SIZE, rgb8(1, 1, 1));
-      if (fh) rect(19, y + SPRITE_SIZE - fh, 4, fh, ok ? rgb8(0, 7, 0) : (wet ? HEAD_COLOR.SOGGY : rgb8(3, 0, 0)));
+    rows.forEach(([frac, ok, wet], i) => {
+      const y = 12 + i * 17, H = 14;
+      const bad = wet ? HEAD_COLOR.SOGGY : rgb8(3, 0, 0);
+      glyph(LETTERS[i], 3, y + 5, ok ? C.text : bad);
+      const fh = Math.round(Math.max(0, Math.min(1, frac)) * H);
+      rect(10, y, 7, H, rgb8(1, 1, 1));
+      if (fh) rect(10, y + H - fh, 7, fh, ok ? rgb8(0, 7, 0) : bad);
     });
   }
 
@@ -637,7 +658,8 @@
     const hc = HEAD_COLOR[mood];
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const leaf = mood === 'SOGGY' ? C.leafRot : C.leaf;
+    // leaves
+    const leaf = mood === 'SOGGY' ? C.leafRot : C.leaf;   // over-watered leaves go olive
     line(48, 11, 48, 17, leaf);
     if (mood === 'THIRSTY' || mood === 'SOGGY') {
       line(47, 12, 41, 16, leaf); line(47, 13, 42, 17, leaf);
@@ -645,13 +667,16 @@
     } else {
       rect(41, 13, 6, 3, leaf); rect(49, 11, 6, 3, leaf);
     }
+    // head
     rect(30, 18, 36, 28, hc);
     px(30, 18, C.bg); px(65, 18, C.bg); px(30, 45, C.bg); px(65, 45, C.bg);
     if (mood === 'HAPPY') { rect(34, 33, 3, 2, C.cheek); rect(59, 33, 3, 2, C.cheek); }
+    // pot
     rect(32, 47, 32, 4, C.potRim);
     for (let i = 0; i < 10; i++) line(34 + Math.floor(i / 3), 51 + i, 61 - Math.floor(i / 3), 51 + i, C.pot);
-    if (mood === 'SOGGY') rect(24, 61, 48, 3, C.water);
+    if (mood === 'SOGGY') rect(24, 61, 48, 3, C.water);   // puddle of excess water
 
+    // eyes
     if (mood === 'HAPPY') {
       if (frame % 14 === 0) { line(39, 28, 42, 28, C.face); line(54, 28, 57, 28, C.face); }
       else { rect(39, 25, 4, 5, C.face); rect(54, 25, 4, 5, C.face); px(40, 26, C.text); px(55, 26, C.text); }
@@ -661,7 +686,7 @@
     } else if (mood === 'COLD') {
       line(39, 25, 42, 27, C.face); line(42, 27, 39, 29, C.face);
       line(57, 25, 54, 27, C.face); line(54, 27, 57, 29, C.face);
-    } else if (mood === 'SOGGY') {
+    } else if (mood === 'SOGGY') {   // bulging eyes, pupils looking down at the puddle
       rect(38, 24, 6, 6, C.text); rect(53, 24, 6, 6, C.text);
       rect(40, 27, 2, 3, C.face); rect(55, 27, 2, 3, C.face);
     } else {
@@ -669,6 +694,7 @@
       line(54, 29, 57, 29, C.face); px(53, 28, C.face); px(58, 28, C.face);
     }
 
+    // mouth
     if (mood === 'HAPPY') {
       line(43, 35, 45, 37, C.face); line(45, 37, 51, 37, C.face); line(51, 37, 53, 35, C.face);
     } else if (mood === 'THIRSTY') {
@@ -679,12 +705,13 @@
         const y = ((x / 2 + frame) & 1) ? 35 : 38;
         line(pxx, pyy, x, y, C.face); pxx = x; pyy = y;
       }
-    } else if (mood === 'SOGGY') {
+    } else if (mood === 'SOGGY') {   // gasping open mouth
       rect(45, 35, 7, 5, C.face);
     } else {
       rect(47, 36, 3, 3, C.face, false);
     }
 
+    // effects
     if (mood === 'THIRSTY') {
       const y = 18 + (frame % 6) * 4;
       px(69, y, C.water); rect(68, y + 1, 3, 3, C.water);
@@ -697,7 +724,7 @@
       glyph(Z_SMALL, 70, 34 - step * 3 + 5, C.muted);
       if (step >= 1) glyph(Z_SMALL, 77, 28 - step * 3 + 5, C.muted);
       if (step >= 2) glyph(Z_BIG, 84, 22 - step * 3 + 3, C.text);
-    } else if (mood === 'SOGGY') {
+    } else if (mood === 'SOGGY') {   // water drips off both sides, the puddle ripples
       const yl = 16 + (frame % 7) * 6, yr = 16 + ((frame + 3) % 7) * 6;
       px(27, yl, C.water); rect(26, yl + 1, 3, 3, C.water);
       px(69, yr, C.water); rect(68, yr + 1, 3, 3, C.water);
@@ -713,20 +740,33 @@
     drawPet(currentMood(), animFrame);
   }, ANIM_INTERVAL_MS);
 
+  // ================================================================ data in
   const currentMood = () => history.length ? history[history.length - 1].mood : 'HAPPY';
 
   function addReading(r, silent = false) {
     const prev = history[history.length - 1];
+    // cumulative plant-time hours, so "x h ago" works across midnight
     r.hours = prev ? prev.hours + stepHours(prev, r) : 0;
+    // day counter: the device only sends time of day, so a new day starts when the clock wraps past midnight
     r.day = prev ? prev.day + (r.clock < prev.clock ? 1 : 0) : 0;
     history.push(r);
     if (history.length > HISTORY_MAX) history.shift();
-    const watered = prev && !prev.forced && !r.forced && r.moisture - prev.moisture >= WATER_JUMP;
-    const over = !!watered && r.moisture > MOISTURE_SOGGY;
+    // Sample data jumps in one step. Real watering takes several seconds, so for real sensors compare with the
+    // lowest reading of the last 40 s (and ignore a second watering within 90 s of the last one).
+    let waterFrom = prev ? prev.moisture : 0;
+    let watered = !!prev && !prev.forced && !r.forced;
+    if (watered && r.real) {
+      for (let i = history.length - 2; i >= 0 && history[i].at >= r.at - 40000 && !history[i].forced; i--) waterFrom = Math.min(waterFrom, history[i].moisture);
+      const lastW = waterings[waterings.length - 1];
+      watered = !(lastW && lastW.reading.real && r.at - lastW.reading.at < 90000);
+    }
+    watered = watered && r.moisture - waterFrom >= WATER_JUMP;
+    // A watering that pushes the soil above the soggy limit is an OVER-watering
+    const over = watered && r.moisture > MOISTURE_SOGGY;
     if (watered) {
-      waterings.push({ reading: r, from: prev.moisture, to: r.moisture, over });
+      waterings.push({ reading: r, from: waterFrom, to: r.moisture, over });
       if (waterings.length > 20) waterings.shift();
-      moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'water', from: prev.moisture, to: r.moisture, over });
+      moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'water', from: waterFrom, to: r.moisture, over });
     }
     if (!prev || prev.mood !== r.mood) {
       moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'mood', mood: r.mood,
@@ -743,6 +783,7 @@
     render();
   }
 
+  // ---------------------------------------------------------------- simulation
   const sim = { index: 0, mode: 0, paused: false, speed: 1, timer: null };
 
   function simTick() {
@@ -758,6 +799,9 @@
     if (source !== 'sim' || sim.paused) return;
     sim.timer = setInterval(simTick, SENSOR_INTERVAL_MS / sim.speed);
   }
+  // Sample backlog: load the whole 48h timeline instantly, so the chart, "Last watered"
+  // and the activity list have data (a proper watering on day 1, an over-watering on
+  // day 2) as soon as the page opens. Live playback then continues from 06:00.
   function simPrefill() {
     const total = TIMELINE.length;
     const now = Date.now();
@@ -785,6 +829,7 @@
   $('speedSel').addEventListener('change', (e) => { sim.speed = +e.target.value; simSchedule(); });
   $('resetBtn').addEventListener('click', () => { resetData(); simStart(); });
 
+  // ---------------------------------------------------------------- live (Web Serial)
   const hasSerial = 'serial' in navigator;
   const live = { port: null, reader: null, closed: null, lastAt: 0 };
 
@@ -793,15 +838,28 @@
     if (p.length < 4) return null;
     const [clock, m, t, l] = p.slice(0, 4).map(Number);
     if ([clock, m, t, l].some((v) => !Number.isFinite(v))) return null;
+    // mood is worked out here from the plant's own limits (the device uses its built-in defaults)
     const mood = computeMood(m, t, l);
-    return { clock, moisture: m, temp: t, lux: l, mood, at: Date.now() };
+    const r = { clock, moisture: m, temp: t, lux: l, mood, at: Date.now() };
+    // Real-sensor firmware sends: counter,moisture,temp,lux,MOOD,Mok|MERR,Tok|TERR,Lok|LERR,LIVE|PRESET
+    // (the board has no clock, so the reading is stamped with this computer's time of day).
+    if (p.length >= 8 && /^M(ok|ERR)$/.test(p[5])) {
+      const d = new Date();
+      r.clock = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+      r.real = true;
+      r.sensors = { soil: p[5] === 'Mok', temp: p[6] === 'Tok', light: p[7] === 'Lok' };
+      r.forced = (p[8] || '').trim() === 'PRESET';   // a demo preset from the device's button, not a real reading
+    }
+    return r;
   }
 
+  // On the first reading from the device, find where it is in the sample timeline and load every
+  // row before it, so the chart, "Last watered" and the activity log match what the device has played.
   function syncBacklog(r) {
-    if (history.length) return;
+    if (history.length || r.real) return;     // real sensors have no sample timeline to catch up on
     const near = (a, b, tol) => Math.abs(a - b) <= tol;
     const idx = TIMELINE.findIndex(([c, m, t, l]) => c === r.clock && near(m, r.moisture, 0.6) && near(t, r.temp, 0.15) && near(l, r.lux, 1.5));
-    if (idx <= 0) return;
+    if (idx <= 0) return;                 // not on the sample timeline (preset mode) or at the very start
     const now = Date.now();
     for (let k = 0; k < idx; k++) {
       const [clock, m, t, l] = TIMELINE[k];
@@ -810,20 +868,37 @@
     }
   }
 
+  async function openPort(port) {
+    await port.open({ baudRate: 9600 });
+    try { await port.setSignals({ dataTerminalReady: true }); } catch (_) {}
+    live.port = port;
+    live.sensors = null;
+    resetData();
+    $('connectBtn').hidden = true;
+    $('disconnectBtn').hidden = false;
+    renderStatus();
+    readLoop(port);
+  }
+
   async function connectSerial() {
     $('errMsg').textContent = '';
     try {
-      const port = await navigator.serial.requestPort();
-      await port.open({ baudRate: 9600 });
-      try { await port.setSignals({ dataTerminalReady: true }); } catch (_) {}
-      live.port = port;
-      resetData();
-      $('connectBtn').hidden = true;
-      $('disconnectBtn').hidden = false;
-      renderStatus();
-      readLoop(port);
+      await openPort(await navigator.serial.requestPort());
     } catch (e) {
       if (e && e.name !== 'NotFoundError') $('errMsg').textContent = 'Could not connect: ' + (e.message || e);
+    }
+  }
+
+  // On page load, reconnect by itself to a board the browser was already allowed to use (no popup needed).
+  async function autoConnect() {
+    if (!hasSerial) return;
+    try {
+      const ports = await navigator.serial.getPorts();
+      if (!ports.length) return;
+      const tc = ports.find((p) => (p.getInfo() || {}).usbVendorId === 0x03EB) || ports[0];
+      await openPort(tc);
+    } catch (e) {
+      $('errMsg').textContent = 'Could not open the saved device (is another program using it?): ' + (e.message || e);
     }
   }
 
@@ -841,7 +916,7 @@
         buf = lines.pop();
         for (const ln of lines) {
           const r = parseLine(ln);
-          if (r && source === 'live') { live.lastAt = Date.now(); syncBacklog(r); addReading(r); }
+          if (r && source === 'live') { live.lastAt = Date.now(); if (r.sensors) live.sensors = r.sensors; syncBacklog(r); addReading(r); }
         }
       }
     } catch (e) {
@@ -862,6 +937,7 @@
     renderStatus();
   }
 
+  // ---------------------------------------------------------------- my plant (care profile)
   function findPlantType(text) {
     const q = text.trim().toLowerCase();
     if (!q) return null;
@@ -870,8 +946,9 @@
   }
   function savePlant(p) {
     try { localStorage.setItem('pg.plant', JSON.stringify(p)); } catch (_) {}
-    location.reload();
+    location.reload();   // the limits are read once at start-up, so a reload applies them everywhere
   }
+  // Shows the chosen plant as a name, three limit chips and an optional one-line note
   function renderPlantInfo() {
     const box = $('plantInfo');
     box.textContent = '';
@@ -913,6 +990,7 @@
       $('plantInfo').textContent = '';
       let why = '';
       try {
+        // the dashboard server (node serve.js) holds the API key and relays the question to Gemini
         const res = await fetch('/api/thresholds', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plant: text }) });
         const j = await res.json().catch(() => ({}));
         if (res.ok && j.soil) {
@@ -928,6 +1006,7 @@
       } catch (_) {
         why = 'could not reach the dashboard server (open the page through node serve.js)';
       }
+      // fall back to the built-in profiles so the feature still works offline
       const t = findPlantType(text) || PLANT_TYPES[0];
       savePlant({ name: text, typeId: findPlantType(text) ? t.id : 'unlisted', soil: t.soil, temp: t.temp, lux: t.lux,
                   note: `Built-in profile used because ${why}.` });
@@ -960,6 +1039,7 @@
     $('serialNote').textContent = 'Live USB needs Chrome or Edge on a computer.';
   }
 
+  // ---------------------------------------------------------------- source switch
   function setSource(s) {
     if (s === source) return;
     source = s;
@@ -976,6 +1056,8 @@
   $('srcSim').addEventListener('click', () => setSource('sim'));
   $('srcLive').addEventListener('click', () => setSource('live'));
 
+  // ================================================================ derived values
+  // Hours between two readings: device clock difference, or wall time if the clock didn't move
   function stepHours(a, b) {
     const d = ((b.clock - a.clock) % 1440 + 1440) % 1440;
     return d > 0 ? d / 60 : Math.max(1, b.at - a.at) / 3.6e6;
@@ -985,6 +1067,8 @@
     return n < 2 ? 0.5 : stepHours(history[n - 2], history[n - 1]);
   }
 
+  // ---------------------------------------------------------------- days & dates
+  // The newest reading's day is "today" (real calendar date); earlier days count back from it.
   const latestDay = () => (history.length ? history[history.length - 1].day : 0);
   function dateForDay(d) {
     const t = new Date();
@@ -997,6 +1081,7 @@
     const diff = latestDay() - d;
     return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : dateForDay(d).toLocaleDateString(undefined, { weekday: 'long' });
   }
+  // e.g. "Today 21:00", "Yesterday 21:00", "Tue 3 Nov, 21:00"
   function fmtWhen(d, clock) {
     const diff = latestDay() - d;
     return (diff <= 1 ? dayName(d) + ' ' : fmtDate(d) + ', ') + fmtClock(clock);
@@ -1022,6 +1107,7 @@
     $('waterSub').textContent =
       `${w.over ? 'Overwatered · ' : ''}${dayName(w.reading.day)}, ${fmtDate(w.reading.day)} · ${fmtAgo(last.hours - w.reading.hours)} · soil ${Math.round(w.from)}% → ${Math.round(w.to)}%`;
 
+    // earlier waterings + average gap
     const prevW = waterings.slice(0, -1).slice(-3).reverse();
     prevW.forEach((p) => {
       const li = document.createElement('li');
@@ -1040,8 +1126,12 @@
     }
   }
 
+  // Least-squares slope of the last 8 moisture readings, in % per reading (same as the sketch).
+  // Returns null until there are at least 3 readings.
+  // Real readings come every 2 s and are noisy, so the trend uses the last ~5 minutes of them instead of 8 samples.
+  const slopeWindow = () => (history.length && history[history.length - 1].real ? 150 : 8);
   function soilSlope() {
-    const pts = history.slice(-8);
+    const pts = history.slice(-slopeWindow());
     const n = pts.length;
     if (n < 3) return null;
     let sx = 0, sy = 0, sxy = 0, sxx = 0;
@@ -1049,21 +1139,23 @@
     return (n * sxy - sx * sy) / (n * sxx - sx * sx);
   }
 
+  // Hours until the soil is dry enough to need water: null = unknown, 0 = now, -1 = not soon
   function predictHours() {
     const last = history[history.length - 1];
     if (!last) return null;
     if (last.moisture < MOISTURE_THIRSTY) return 0;
     const slope = soilSlope();
     if (slope === null) return null;
-    if (slope > -0.05) return -1;
+    if (slope / hoursPerSample() > -0.1) return -1;    // drying slower than 0.1 % per hour: not soon
     return (last.moisture - MOISTURE_THIRSTY) / -slope * hoursPerSample();
   }
 
+  // Hours until an over-watered soil is back under the soggy limit: null = unknown, -1 = not drying yet
   function predictDryHours() {
     const last = history[history.length - 1];
     const slope = soilSlope();
     if (!last || slope === null) return null;
-    if (slope > -0.05) return -1;
+    if (slope / hoursPerSample() > -0.1) return -1;
     return (last.moisture - MOISTURE_SOGGY) / -slope * hoursPerSample();
   }
 
@@ -1083,6 +1175,7 @@
     SOGGY:   (r) => `Glub glub… I'm drowning! My soil is at ${Math.round(r.moisture)}%. No more water, please — let me dry out.`,
   };
 
+  // ================================================================ render
   const ICONS = {
     good: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="var(--good)"/><path d="M3.8 7.2 6 9.3 10.3 4.8" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     critical: '<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="var(--critical)"/><rect x="6.1" y="3" width="1.8" height="5" rx=".9" fill="#fff"/><circle cx="7" cy="10.3" r="1" fill="#fff"/></svg>',
@@ -1153,7 +1246,7 @@
       fill.style.width = (Math.max(0, Math.min(1, v.frac(val))) * 100).toFixed(1) + '%';
       fill.style.background = ok ? 'var(--good)' : `var(--${bad.level})`;
       meter.append(fill);
-      [v.thr, v.thr2].forEach((t) => {
+      [v.thr, v.thr2].forEach((t) => {   // limit ticks (soil has two: the healthy band)
         if (t === undefined) return;
         const tick = document.createElement('div');
         tick.className = 'tick';
@@ -1202,6 +1295,8 @@
     canvas.setAttribute('aria-label', `Pixel-art plant face looking ${info.name.toLowerCase()}`);
     if (last) {
       const okf = [last.moisture >= MOISTURE_THIRSTY && last.moisture <= MOISTURE_SOGGY, last.temp >= TEMP_COLD, last.lux >= LIGHT_DARK];
+      // Symbols mirror the readings: drop and thermometer fill from the bottom (the unfilled top part is dulled),
+      // the sun brightens in 4 steps with light. Boxes are the symbols' pixel bounds in the 1024x765 picture.
       const clamp01 = (v) => Math.max(0, Math.min(1, v));
       const layers = document.querySelectorAll('.scene-layer');
       const fill = (n, y0, y1, f) => {
@@ -1245,7 +1340,7 @@
   function renderPrediction() {
     const h = predictHours();
     const last = history[history.length - 1];
-    if (last && last.moisture > MOISTURE_SOGGY) {
+    if (last && last.moisture > MOISTURE_SOGGY) {   // over-watered: advise holding off instead of predicting a watering
       const d = predictDryHours();
       $('predValue').textContent = 'Hold off';
       $('predSub').textContent = d === null || d < 0
@@ -1264,10 +1359,11 @@
       $('predSub').textContent = 'Moisture is steady or rising';
     } else {
       $('predValue').textContent = `~${h < 10 ? h.toFixed(1) : Math.round(h)} h`;
-      $('predSub').textContent = `Around ${fmtClock(last.clock + h * 60)}, based on the last ${Math.min(8, history.length)} readings`;
+      $('predSub').textContent = `Around ${fmtClock(last.clock + h * 60)}, based on the last ${Math.min(slopeWindow(), history.length)} readings`;
     }
   }
 
+  // Why the plant is in a mood, in plain words
   function moodReason(e) {
     const why = moodReasonBase(e);
     if (e.overWater) return `Watering pushed the soil too far · ${why}`;
@@ -1288,7 +1384,7 @@
     box.textContent = '';
     const items = moodLog
       .filter((e) => actFilter === 'all' || e.type === actFilter)
-      .sort((a, b) => b.day - a.day || b.clock - a.clock || b.seq - a.seq);
+      .sort((a, b) => b.day - a.day || b.clock - a.clock || b.seq - a.seq);   // newest first
     if (!items.length) {
       const p = document.createElement('div'); p.className = 'empty';
       p.textContent = actFilter === 'water' ? 'No waterings detected yet.' : 'Nothing has happened yet.';
@@ -1296,6 +1392,7 @@
       return;
     }
 
+    // group by day
     const groups = [];
     items.forEach((e) => {
       if (!groups.length || groups[groups.length - 1].day !== e.day) groups.push({ day: e.day, items: [] });
@@ -1360,7 +1457,7 @@
   function renderTable() {
     const tb = $('tableBody');
     tb.textContent = '';
-    for (let i = history.length - 1; i >= 0; i--) {
+    for (let i = history.length - 1; i >= Math.max(0, history.length - 150); i--) {   // newest 150 rows
       const r = history[i];
       const tr = document.createElement('tr');
       [fmtDate(r.day), fmtClock(r.clock), Math.round(r.moisture), r.temp.toFixed(1), Math.round(r.lux), MOOD_INFO[r.mood].name]
@@ -1381,14 +1478,22 @@
       dot.classList.add('stale');
       txt.textContent = 'Live device · no data';
     } else {
-      dot.classList.add('live');
-      txt.textContent = live.lastAt ? 'Live device' : 'Live device · waiting for data';
+      const s = live.sensors;
+      const bad = s ? [['soil', s.soil], ['temperature', s.temp], ['light', s.light]].filter(([, ok]) => !ok).map(([n]) => n) : [];
+      if (bad.length) {
+        dot.classList.add('stale');
+        txt.textContent = `Live device · ${bad.join(', ')} sensor${bad.length > 1 ? 's' : ''} not responding`;
+      } else {
+        dot.classList.add('live');
+        txt.textContent = live.lastAt ? 'Live device' : 'Live device · waiting for data';
+      }
     }
     const last = history[history.length - 1];
     $('lastUpdate').textContent = last ? `Last reading ${fmtClock(last.clock)}` : '';
   }
   setInterval(() => { if (source === 'live') renderStatus(); }, 1000);
 
+  // ---------------------------------------------------------------- history chart
   const CHART = {
     moisture: { title: 'Soil moisture history', unit: '%', fmt: (v) => `${Math.round(v)}%`,
       domain: () => [0, 100], ticks: [0, 25, 50, 75, 100], tickFmt: (v) => v, scale: 'lin',
@@ -1459,6 +1564,7 @@
     const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, tabindex: 0, role: 'img',
       'aria-label': `${cfg.title}, ${n} readings. Latest ${cfg.fmt(vals[n - 1])}. Use left and right arrow keys to inspect readings.` });
 
+    // gridlines + y ticks
     let ticks = cfg.ticks;
     if (!ticks) { ticks = []; for (let v = d0; v <= d1 + 1e-9; v += 5) ticks.push(v); }
     ticks.forEach((tval) => {
@@ -1469,42 +1575,48 @@
     });
     el('line', { x1: M.l, x2: W - M.r, y1: plotBottom, y2: plotBottom, stroke: 'var(--axis)', 'stroke-width': 1 }, svg);
 
+    // threshold
     const ty = y(cfg.thr);
     el('line', { x1: M.l, x2: W - M.r, y1: ty, y2: ty, stroke: 'var(--critical)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }, svg);
     const tl = el('text', { x: M.l + 4, y: ty - 5, 'text-anchor': 'start', 'font-size': 11, fill: 'var(--text-secondary)' }, svg);
     tl.textContent = cfg.thrLabel;
-    if (cfg.thr2 !== undefined) {
+    if (cfg.thr2 !== undefined) {   // upper limit (soil: too wet)
       const ty2 = y(cfg.thr2);
       el('line', { x1: M.l, x2: W - M.r, y1: ty2, y2: ty2, stroke: 'var(--serious)', 'stroke-width': 1.5, 'stroke-dasharray': '2 3' }, svg);
       const tl2 = el('text', { x: M.l + 4, y: ty2 - 5, 'text-anchor': 'start', 'font-size': 11, fill: 'var(--text-secondary)' }, svg);
       tl2.textContent = cfg.thr2Label;
     }
 
+    // hatch pattern for the soggy mood strip (5th mood colour: never colour alone)
     const defs = el('defs', {}, svg);
     const pat = el('pattern', { id: 'hatch-soggy', patternUnits: 'userSpaceOnUse', width: 4, height: 4, patternTransform: 'rotate(45)' }, defs);
     el('rect', { width: 2, height: 4, fill: 'var(--mood-soggy)' }, pat);
 
+    // line
     const d = vals.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
     el('path', { d, fill: 'none', stroke: 'var(--series-1)', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
 
+    // watering markers: thin line + drop at the top of the plot
     const waterIdx = new Map();
     waterings.forEach((w) => {
       const i = history.indexOf(w.reading);
       if (i < 0) return;
       waterIdx.set(i, w);
       const wx = x(i);
-      const wc = w.over ? 'var(--serious)' : 'var(--accent)';
+      const wc = w.over ? 'var(--serious)' : 'var(--accent)';   // over-watering is marked in the warning colour
       el('line', { x1: wx, x2: wx, y1: M.t + 12, y2: plotBottom, stroke: wc, 'stroke-width': 1, 'stroke-dasharray': '2 3', opacity: 0.7 }, svg);
       el('path', { d: `M${wx},${M.t - 2} C${wx},${M.t - 2} ${wx - 5},${M.t + 4} ${wx - 5},${M.t + 7} a5,5 0 0 0 10,0 C${wx + 5},${M.t + 4} ${wx},${M.t - 2} ${wx},${M.t - 2}Z`, fill: wc }, svg);
-      if (w.over) {
+      if (w.over) {   // exclamation mark inside the drop so it isn't colour alone
         el('rect', { x: wx - 0.7, y: M.t + 3, width: 1.4, height: 4, fill: '#fff' }, svg);
         el('circle', { cx: wx, cy: M.t + 9, r: 0.9, fill: '#fff' }, svg);
       }
     });
 
+    // latest point + direct label
     const lx = x(n - 1), ly = y(vals[n - 1]);
     el('circle', { cx: lx, cy: ly, r: 5, fill: 'var(--series-1)', stroke: 'var(--surface)', 'stroke-width': 2 }, svg);
 
+    // mood strip (runs, 2px gaps)
     const stripY = plotBottom + stripGap;
     const step = n > 1 ? pw / (n - 1) : pw;
     let runStart = 0;
@@ -1522,6 +1634,7 @@
       }
     }
 
+    // x tick labels
     const maxLabels = Math.max(2, Math.floor(pw / 60));
     const every = Math.max(1, Math.ceil(n / maxLabels));
     for (let i = 0; i < n; i += every) {
@@ -1529,6 +1642,7 @@
       t.textContent = fmtClock(history[i].clock);
     }
 
+    // crosshair layer
     const cross = el('g', { visibility: 'hidden' }, svg);
     const cLine = el('line', { y1: M.t, y2: stripY + stripH, stroke: 'var(--text-muted)', 'stroke-width': 1 }, cross);
     const cDot = el('circle', { r: 5, fill: 'var(--series-1)', stroke: 'var(--surface)', 'stroke-width': 2 }, cross);
@@ -1604,9 +1718,15 @@
     drawPet(currentMood(), animFrame);
   }
 
+  // ================================================================ start
   renderLegend();
   drawPet('HAPPY', 0);
-  simStart();
+  if (hasSerial) {            // start on the real device (Chrome / Edge); Simulation is still one click away
+    setSource('live');
+    autoConnect();
+  } else {
+    simStart();
+  }
 })();
 </script>
 </body>
