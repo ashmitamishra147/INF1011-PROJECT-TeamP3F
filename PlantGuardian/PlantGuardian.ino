@@ -36,9 +36,9 @@
 
 // Wireling adapter ports (0-3, printed on the adapter). Must be defined before Sensors.h.
 #define LIGHT_PORT    0
-#define MOISTURE_PORT 1
+#define MOISTURE_PORT 3   // adapter port 1 on this unit pulls the I2C data line low, so soil moisture lives on port 3
 #define TEMP_PORT     2
-#define BUZZER_PORT   3
+#define BUZZER_PORT   1
 #if !USE_SIMULATED_DATA
 #include "Sensors.h"   // Wireling drivers: PCT2075 (temp), TSL2572 (light), capacitive soil moisture
 #endif
@@ -839,6 +839,7 @@ void setup() {
   SerialUSB.begin(9600);
 
   display.begin();
+  display.setFlip(true);                 // the board is mounted so the screen needs a 180 degree turn
   display.setBrightness(BRIGHT_NORMAL);
   display.setFont(thinPixel7_10ptFontInfo);
   display.clearScreen();
