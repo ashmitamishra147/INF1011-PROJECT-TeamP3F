@@ -31,7 +31,18 @@
 #include <TinyScreen.h>
 
 // ---------------------------------------------------------------- config
-#define USE_SIMULATED_DATA 1
+// 1 = built-in sample timeline, 0 = read the real Wirelings (light, soil moisture, temperature)
+#define USE_SIMULATED_DATA 0
+
+// Wireling adapter ports (0-3, printed on the adapter). Must be defined before Sensors.h.
+#define LIGHT_PORT    0
+#define MOISTURE_PORT 1
+#define TEMP_PORT     2
+#define BUZZER_PORT   3
+#if !USE_SIMULATED_DATA
+#include "Sensors.h"   // Wireling drivers: PCT2075 (temp), TSL2572 (light), capacitive soil moisture
+#endif
+
 // 1 = include sprites.h and show the BUDDY picture screen (needs the 59 KB picture data); 0 = leave both out
 #define USE_SCENE 0
 #if USE_SCENE
@@ -173,31 +184,46 @@ bool    blinking = false;
 
 uint16_t simulatedClock() { return TIMELINE[simIndex].minuteOfDay; }
 
+#if !USE_SIMULATED_DATA
+// Latest good reading from each Wireling. If a sensor misses a read, its last good value is kept
+// (so one hiccup doesn't put a 0 on the screen or the dashboard) and its OK flag goes false.
+bool  moistureOk = false, tempOk = false, lightOk = false;
+float lastMoisture = 50, lastTemperature = 22;
+int   lastLight = 100;
+
+void refreshSensors() {
+  SensorReadings s = sensorsRead();
+  moistureOk = s.moistureOk;  tempOk = s.tempOk;  lightOk = s.lightOk;
+  if (moistureOk) lastMoisture    = s.moisturePct;
+  if (tempOk)     lastTemperature = s.tempC;
+  if (lightOk)    lastLight       = (int)(s.lux + 0.5f);
+}
+#endif
+
 float readSoilMoisture() {
+  if (simMode) return PRESETS[simMode - 1].moisture;      // demo preset (upper-left button)
 #if USE_SIMULATED_DATA
-  return simMode ? PRESETS[simMode - 1].moisture : TIMELINE[simIndex].moisture;
+  return TIMELINE[simIndex].moisture;
 #else
-  // TODO: Wireling.selectPort(SOIL_PORT); read raw value, then map using your
-  // dry/wet calibration: constrain(map(raw, RAW_DRY, RAW_WET, 0, 100), 0, 100)
-  return 0;
+  return lastMoisture;                                    // soil moisture Wireling, 0-100 %
 #endif
 }
 
 float readTemperature() {
+  if (simMode) return PRESETS[simMode - 1].temp;
 #if USE_SIMULATED_DATA
-  return simMode ? PRESETS[simMode - 1].temp : TIMELINE[simIndex].temp;
+  return TIMELINE[simIndex].temp;
 #else
-  // TODO: Wireling.selectPort(TEMP_PORT); read the PCT2075 over I2C
-  return 0;
+  return lastTemperature;                                 // PCT2075 temperature Wireling, deg C
 #endif
 }
 
 int readLightLevel() {
+  if (simMode) return PRESETS[simMode - 1].lux;
 #if USE_SIMULATED_DATA
-  return simMode ? PRESETS[simMode - 1].lux : TIMELINE[simIndex].lux;
+  return TIMELINE[simIndex].lux;
 #else
-  // TODO: Wireling.selectPort(LIGHT_PORT); read the ambient light sensor in lux
-  return 0;
+  return lastLight;                                       // TSL2572 light Wireling, lux
 #endif
 }
 
@@ -270,8 +296,12 @@ void formatClock(char *buf, size_t len) {
   if (simMode) {
     snprintf(buf, len, "DEMO");
   } else {
+#if USE_SIMULATED_DATA
     uint16_t t = simulatedClock();
     snprintf(buf, len, "%02u:%02u%s", t / 60, t % 60, paused ? " ||" : "");
+#else
+    snprintf(buf, len, "LIVE%s", paused ? " ||" : "");   // no clock on the board: the dashboard stamps the time
+#endif
   }
 }
 
@@ -746,6 +776,9 @@ void wake() {
 }
 
 void takeReading() {
+#if !USE_SIMULATED_DATA
+  refreshSensors();
+#endif
   moisture    = readSoilMoisture();
   temperature = readTemperature();
   lightLevel  = readLightLevel();
@@ -756,11 +789,24 @@ void takeReading() {
   mood = newMood;
   if (moodChanged) wake();
 
-  SerialUSB.print(simulatedClock()); SerialUSB.print(',');
+#if USE_SIMULATED_DATA
+  SerialUSB.print(simulatedClock()); SerialUSB.print(',');   // sample clock, minutes since midnight
+#else
+  static unsigned long readingSeq = 0;
+  SerialUSB.print(readingSeq++);     SerialUSB.print(',');   // reading counter (the dashboard stamps the real time)
+#endif
   SerialUSB.print(moisture);         SerialUSB.print(',');
   SerialUSB.print(temperature);      SerialUSB.print(',');
   SerialUSB.print(lightLevel);       SerialUSB.print(',');
-  SerialUSB.println(MOOD_NAMES[mood]);
+  SerialUSB.print(MOOD_NAMES[mood]);
+#if !USE_SIMULATED_DATA
+  // sensor health + whether this reading is real or a demo preset, for the dashboard
+  SerialUSB.print(moistureOk ? F(",Mok") : F(",MERR"));
+  SerialUSB.print(tempOk     ? F(",Tok") : F(",TERR"));
+  SerialUSB.print(lightOk    ? F(",Lok") : F(",LERR"));
+  SerialUSB.print(simMode    ? F(",PRESET") : F(",LIVE"));
+#endif
+  SerialUSB.println();
 
   redrawView(moodChanged && view == VIEW_PET);
 
@@ -797,6 +843,13 @@ void setup() {
   display.setFont(thinPixel7_10ptFontInfo);
   display.clearScreen();
 
+#if !USE_SIMULATED_DATA
+  // Sensors come up after the display, with no long delays, so a missing sensor can't freeze the boot.
+  Wireling.begin();                  // the adapter's I2C multiplexer
+  Wireling.selectPort(LIGHT_PORT);
+  tsl2572Begin();                    // light sensor needs a one-time setup; temperature and moisture don't
+#endif
+
   takeReading();
   redrawView(true);
   lastSensorMs = lastAnimMs = lastActivityMs = millis();
@@ -811,7 +864,11 @@ void loop() {
 
   if (now - lastSensorMs >= SENSOR_INTERVAL_MS) {
     lastSensorMs = now;
+#if USE_SIMULATED_DATA
     takeReading();
+#else
+    if (!paused) takeReading();      // pause (upper-right) freezes the real readings too
+#endif
   }
 
   if (now - lastAnimMs >= ANIM_INTERVAL_MS) {
