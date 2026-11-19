@@ -501,7 +501,7 @@
   const PLANT = savedPlant || { name: '', soil: PLANT_TYPES[0].soil, temp: PLANT_TYPES[0].temp, lux: PLANT_TYPES[0].lux, typeId: 'general' };
   const MOISTURE_THIRSTY = PLANT.soil[0], MOISTURE_SOGGY = PLANT.soil[1], TEMP_COLD = PLANT.temp, LIGHT_DARK = PLANT.lux;
   const SENSOR_INTERVAL_MS = 2000, ANIM_INTERVAL_MS = 350;
-  const HISTORY_MAX = 96;
+  const HISTORY_MAX = 1800;   // 96 sample rows, or about an hour of real readings (one every 2 s)
   const WATER_JUMP = 15;    // moisture rise (percentage points) between readings that counts as a watering
   const MOODS = ['HAPPY', 'THIRSTY', 'COLD', 'SLEEPY', 'SOGGY'];
   const MOOD_INFO = {
@@ -751,13 +751,22 @@
     r.day = prev ? prev.day + (r.clock < prev.clock ? 1 : 0) : 0;
     history.push(r);
     if (history.length > HISTORY_MAX) history.shift();
-    const watered = prev && !prev.forced && !r.forced && r.moisture - prev.moisture >= WATER_JUMP;
+    // Sample data jumps in one step. Real watering takes several seconds, so for real sensors compare with the
+    // lowest reading of the last 40 s (and ignore a second watering within 90 s of the last one).
+    let waterFrom = prev ? prev.moisture : 0;
+    let watered = !!prev && !prev.forced && !r.forced;
+    if (watered && r.real) {
+      for (let i = history.length - 2; i >= 0 && history[i].at >= r.at - 40000 && !history[i].forced; i--) waterFrom = Math.min(waterFrom, history[i].moisture);
+      const lastW = waterings[waterings.length - 1];
+      watered = !(lastW && lastW.reading.real && r.at - lastW.reading.at < 90000);
+    }
+    watered = watered && r.moisture - waterFrom >= WATER_JUMP;
     // A watering that pushes the soil above the soggy limit is an OVER-watering
-    const over = !!watered && r.moisture > MOISTURE_SOGGY;
+    const over = watered && r.moisture > MOISTURE_SOGGY;
     if (watered) {
-      waterings.push({ reading: r, from: prev.moisture, to: r.moisture, over });
+      waterings.push({ reading: r, from: waterFrom, to: r.moisture, over });
       if (waterings.length > 20) waterings.shift();
-      moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'water', from: prev.moisture, to: r.moisture, over });
+      moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'water', from: waterFrom, to: r.moisture, over });
     }
     if (!prev || prev.mood !== r.mood) {
       moodLog.push({ day: r.day, clock: r.clock, seq: actSeq++, type: 'mood', mood: r.mood,
@@ -831,13 +840,23 @@
     if ([clock, m, t, l].some((v) => !Number.isFinite(v))) return null;
     // mood is worked out here from the plant's own limits (the device uses its built-in defaults)
     const mood = computeMood(m, t, l);
-    return { clock, moisture: m, temp: t, lux: l, mood, at: Date.now() };
+    const r = { clock, moisture: m, temp: t, lux: l, mood, at: Date.now() };
+    // Real-sensor firmware sends: counter,moisture,temp,lux,MOOD,Mok|MERR,Tok|TERR,Lok|LERR,LIVE|PRESET
+    // (the board has no clock, so the reading is stamped with this computer's time of day).
+    if (p.length >= 8 && /^M(ok|ERR)$/.test(p[5])) {
+      const d = new Date();
+      r.clock = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+      r.real = true;
+      r.sensors = { soil: p[5] === 'Mok', temp: p[6] === 'Tok', light: p[7] === 'Lok' };
+      r.forced = (p[8] || '').trim() === 'PRESET';   // a demo preset from the device's button, not a real reading
+    }
+    return r;
   }
 
   // On the first reading from the device, find where it is in the sample timeline and load every
   // row before it, so the chart, "Last watered" and the activity log match what the device has played.
   function syncBacklog(r) {
-    if (history.length) return;
+    if (history.length || r.real) return;     // real sensors have no sample timeline to catch up on
     const near = (a, b, tol) => Math.abs(a - b) <= tol;
     const idx = TIMELINE.findIndex(([c, m, t, l]) => c === r.clock && near(m, r.moisture, 0.6) && near(t, r.temp, 0.15) && near(l, r.lux, 1.5));
     if (idx <= 0) return;                 // not on the sample timeline (preset mode) or at the very start
@@ -849,20 +868,37 @@
     }
   }
 
+  async function openPort(port) {
+    await port.open({ baudRate: 9600 });
+    try { await port.setSignals({ dataTerminalReady: true }); } catch (_) {}
+    live.port = port;
+    live.sensors = null;
+    resetData();
+    $('connectBtn').hidden = true;
+    $('disconnectBtn').hidden = false;
+    renderStatus();
+    readLoop(port);
+  }
+
   async function connectSerial() {
     $('errMsg').textContent = '';
     try {
-      const port = await navigator.serial.requestPort();
-      await port.open({ baudRate: 9600 });
-      try { await port.setSignals({ dataTerminalReady: true }); } catch (_) {}
-      live.port = port;
-      resetData();
-      $('connectBtn').hidden = true;
-      $('disconnectBtn').hidden = false;
-      renderStatus();
-      readLoop(port);
+      await openPort(await navigator.serial.requestPort());
     } catch (e) {
       if (e && e.name !== 'NotFoundError') $('errMsg').textContent = 'Could not connect: ' + (e.message || e);
+    }
+  }
+
+  // On page load, reconnect by itself to a board the browser was already allowed to use (no popup needed).
+  async function autoConnect() {
+    if (!hasSerial) return;
+    try {
+      const ports = await navigator.serial.getPorts();
+      if (!ports.length) return;
+      const tc = ports.find((p) => (p.getInfo() || {}).usbVendorId === 0x03EB) || ports[0];
+      await openPort(tc);
+    } catch (e) {
+      $('errMsg').textContent = 'Could not open the saved device (is another program using it?): ' + (e.message || e);
     }
   }
 
@@ -880,7 +916,7 @@
         buf = lines.pop();
         for (const ln of lines) {
           const r = parseLine(ln);
-          if (r && source === 'live') { live.lastAt = Date.now(); syncBacklog(r); addReading(r); }
+          if (r && source === 'live') { live.lastAt = Date.now(); if (r.sensors) live.sensors = r.sensors; syncBacklog(r); addReading(r); }
         }
       }
     } catch (e) {
@@ -1092,8 +1128,10 @@
 
   // Least-squares slope of the last 8 moisture readings, in % per reading (same as the sketch).
   // Returns null until there are at least 3 readings.
+  // Real readings come every 2 s and are noisy, so the trend uses the last ~5 minutes of them instead of 8 samples.
+  const slopeWindow = () => (history.length && history[history.length - 1].real ? 150 : 8);
   function soilSlope() {
-    const pts = history.slice(-8);
+    const pts = history.slice(-slopeWindow());
     const n = pts.length;
     if (n < 3) return null;
     let sx = 0, sy = 0, sxy = 0, sxx = 0;
@@ -1108,7 +1146,7 @@
     if (last.moisture < MOISTURE_THIRSTY) return 0;
     const slope = soilSlope();
     if (slope === null) return null;
-    if (slope > -0.05) return -1;
+    if (slope / hoursPerSample() > -0.1) return -1;    // drying slower than 0.1 % per hour: not soon
     return (last.moisture - MOISTURE_THIRSTY) / -slope * hoursPerSample();
   }
 
@@ -1117,7 +1155,7 @@
     const last = history[history.length - 1];
     const slope = soilSlope();
     if (!last || slope === null) return null;
-    if (slope > -0.05) return -1;
+    if (slope / hoursPerSample() > -0.1) return -1;
     return (last.moisture - MOISTURE_SOGGY) / -slope * hoursPerSample();
   }
 
@@ -1321,7 +1359,7 @@
       $('predSub').textContent = 'Moisture is steady or rising';
     } else {
       $('predValue').textContent = `~${h < 10 ? h.toFixed(1) : Math.round(h)} h`;
-      $('predSub').textContent = `Around ${fmtClock(last.clock + h * 60)}, based on the last ${Math.min(8, history.length)} readings`;
+      $('predSub').textContent = `Around ${fmtClock(last.clock + h * 60)}, based on the last ${Math.min(slopeWindow(), history.length)} readings`;
     }
   }
 
@@ -1419,7 +1457,7 @@
   function renderTable() {
     const tb = $('tableBody');
     tb.textContent = '';
-    for (let i = history.length - 1; i >= 0; i--) {
+    for (let i = history.length - 1; i >= Math.max(0, history.length - 150); i--) {   // newest 150 rows
       const r = history[i];
       const tr = document.createElement('tr');
       [fmtDate(r.day), fmtClock(r.clock), Math.round(r.moisture), r.temp.toFixed(1), Math.round(r.lux), MOOD_INFO[r.mood].name]
@@ -1440,8 +1478,15 @@
       dot.classList.add('stale');
       txt.textContent = 'Live device · no data';
     } else {
-      dot.classList.add('live');
-      txt.textContent = live.lastAt ? 'Live device' : 'Live device · waiting for data';
+      const s = live.sensors;
+      const bad = s ? [['soil', s.soil], ['temperature', s.temp], ['light', s.light]].filter(([, ok]) => !ok).map(([n]) => n) : [];
+      if (bad.length) {
+        dot.classList.add('stale');
+        txt.textContent = `Live device · ${bad.join(', ')} sensor${bad.length > 1 ? 's' : ''} not responding`;
+      } else {
+        dot.classList.add('live');
+        txt.textContent = live.lastAt ? 'Live device' : 'Live device · waiting for data';
+      }
     }
     const last = history[history.length - 1];
     $('lastUpdate').textContent = last ? `Last reading ${fmtClock(last.clock)}` : '';
@@ -1676,7 +1721,12 @@
   // ================================================================ start
   renderLegend();
   drawPet('HAPPY', 0);
-  simStart();
+  if (hasSerial) {            // start on the real device (Chrome / Edge); Simulation is still one click away
+    setSource('live');
+    autoConnect();
+  } else {
+    simStart();
+  }
 })();
 </script>
 </body>
