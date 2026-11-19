@@ -633,32 +633,24 @@
   const Z_SMALL = ['111', '010', '111'];
   const Z_BIG = ['1111', '0010', '0100', '1000', '1111'];
 
-  // Left column of the device's pet screen: icon (dull when out of range) + level bar, one row per reading
-  function drawSprite(x, y, data, dim) {
-    for (let j = 0; j < SPRITE_SIZE; j++) for (let i = 0; i < SPRITE_SIZE; i++) {
-      let v = data[j * SPRITE_SIZE + i];
-      if (!v) continue;
-      if (dim) v = ((v & 0xC0) >> 1) | ((v & 0x18) >> 1) | ((v >> 1) & 1);
-      px(x + i, y + j, `rgb(${(v & 3) * 85},${Math.round(((v >> 2) & 7) * 255 / 7)},${Math.round(((v >> 5) & 7) * 255 / 7)})`);
-    }
-  }
+  // Left column of the device's pet screen: one letter + level bar per reading
   function drawGauges() {
     const r = history[history.length - 1];
     if (!r) return;
+    // One tidy column per reading: a crisp letter (S = soil, T = temperature, L = light) and a level bar beside it
+    const LETTERS = [['011', '100', '010', '001', '110'], ['111', '010', '010', '010', '010'], ['100', '100', '100', '100', '111']];
     const rows = [
-      [SPRITES.moisture, r.moisture / 100, r.moisture >= MOISTURE_THIRSTY && r.moisture <= MOISTURE_SOGGY, r.moisture > MOISTURE_SOGGY],
-      [SPRITES.temperature, r.temp / 40, r.temp >= TEMP_COLD, false],
-      [SPRITES.light, Math.log10(r.lux + 1) / 3, r.lux >= LIGHT_DARK, false],
+      [r.moisture / 100, r.moisture >= MOISTURE_THIRSTY && r.moisture <= MOISTURE_SOGGY, r.moisture > MOISTURE_SOGGY],
+      [r.temp / 40, r.temp >= TEMP_COLD, false],
+      [Math.log10(r.lux + 1) / 3, r.lux >= LIGHT_DARK, false],
     ];
-    rows.forEach(([spr, frac, ok, wet], i) => {
-      const y = 12 + i * 17;
-      const g = canvas.getContext('2d');
-      g.fillStyle = ok ? '#e8e8e8' : (wet ? '#2dd4bf' : '#ff3b30');
-      g.font = 'bold 6px monospace'; g.textBaseline = 'top';
-      g.fillText('STL'[i], 3, y + 3);
-      const fh = Math.floor(Math.max(0, Math.min(1, frac)) * SPRITE_SIZE);
-      rect(19, y, 4, SPRITE_SIZE, rgb8(1, 1, 1));
-      if (fh) rect(19, y + SPRITE_SIZE - fh, 4, fh, ok ? rgb8(0, 7, 0) : (wet ? HEAD_COLOR.SOGGY : rgb8(3, 0, 0)));
+    rows.forEach(([frac, ok, wet], i) => {
+      const y = 12 + i * 17, H = 14;
+      const bad = wet ? HEAD_COLOR.SOGGY : rgb8(3, 0, 0);
+      glyph(LETTERS[i], 3, y + 5, ok ? C.text : bad);
+      const fh = Math.round(Math.max(0, Math.min(1, frac)) * H);
+      rect(10, y, 7, H, rgb8(1, 1, 1));
+      if (fh) rect(10, y + H - fh, 7, fh, ok ? rgb8(0, 7, 0) : bad);
     });
   }
 

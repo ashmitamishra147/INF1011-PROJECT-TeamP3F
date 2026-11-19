@@ -29,10 +29,14 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <TinyScreen.h>
-#include "sprites.h"   // 14x14 icons cut from plantguardian.jpg: drop = soil, thermometer = temperature, sun = light
 
 // ---------------------------------------------------------------- config
 #define USE_SIMULATED_DATA 1
+// 1 = include sprites.h and show the BUDDY picture screen (needs the 59 KB picture data); 0 = leave both out
+#define USE_SCENE 0
+#if USE_SCENE
+#include "sprites.h"
+#endif
 
 const unsigned long SENSOR_INTERVAL_MS = 2000;   // "check every 2 seconds"
 const unsigned long ANIM_INTERVAL_MS   = 350;    // face animation speed
@@ -69,7 +73,11 @@ const uint8_t C_WATER    = RGB8(1, 6, 7);
 
 // ---------------------------------------------------------------- types
 enum Mood { MOOD_HAPPY, MOOD_THIRSTY, MOOD_COLD, MOOD_SLEEPY, MOOD_SOGGY, MOOD_COUNT };
-enum View { VIEW_BUDDY, VIEW_PET, VIEW_VITALS, VIEW_GRAPH_SOIL, VIEW_GRAPH_TEMP, VIEW_GRAPH_LIGHT, VIEW_COUNT };
+enum View {
+#if USE_SCENE
+  VIEW_BUDDY,
+#endif
+  VIEW_PET, VIEW_VITALS, VIEW_GRAPH_SOIL, VIEW_GRAPH_TEMP, VIEW_GRAPH_LIGHT, VIEW_COUNT };
 enum Metric { MET_SOIL, MET_TEMP, MET_LIGHT, MET_COUNT };
 
 struct Sample {
@@ -136,7 +144,11 @@ TinyScreen display = TinyScreen(TinyScreenPlus);
 float moisture = 0, temperature = 0;
 int   lightLevel = 0;
 Mood  mood = MOOD_HAPPY;
+#if USE_SCENE
 View  view = VIEW_BUDDY;
+#else
+View  view = VIEW_PET;
+#endif
 
 uint8_t simIndex = 0;     // position in TIMELINE
 uint8_t simMode  = 0;     // 0 = timeline, 1..5 = force mood (simMode-1)
@@ -303,11 +315,7 @@ void drawVBar(uint8_t x, uint8_t top, uint8_t w, uint8_t h, float frac, uint8_t 
   if (fh) display.drawRect(x, top + h - fh, w, fh, TSRectangleFilled, color);
 }
 
-// ================================================================ BUDDY view: the whole picture
-// Halve each colour channel of an 8-bit BBBGGGRR colour (used for "out of range" symbols)
-uint8_t dimColor(uint8_t c) { return (uint8_t)(((c & 0xC0) >> 1) | ((c & 0x18) >> 1) | ((c >> 1) & 1)); }
-
-// Tiny 3x5 pixel font, A-Z, for the title and the status word (the picture's status box is only 5 pixels tall)
+// Tiny 3x5 pixel font, A-Z, used for the small labels (S/T/L, SOIL, TEMP, LUX) and the BUDDY screen's status word
 #define G3(r0, r1, r2, r3, r4) ((uint16_t)(((r0) << 12) | ((r1) << 9) | ((r2) << 6) | ((r3) << 3) | (r4)))
 const uint16_t TINY_FONT[26] = {
   G3(2,5,7,5,5), G3(6,5,6,5,6), G3(3,4,4,4,3), G3(6,5,5,5,6), G3(7,4,6,4,7), G3(7,4,6,4,4), // A B C D E F
@@ -328,6 +336,11 @@ void drawTinyText(uint8_t x, uint8_t y, const char *s, uint8_t color) {
         if ((g >> ((4 - row) * 3 + (2 - col))) & 1) display.drawPixel(x + col, y + row, color);
   }
 }
+
+#if USE_SCENE
+// ================================================================ BUDDY view: the whole picture
+// Halve each colour channel of an 8-bit BBBGGGRR colour (used for "out of range" symbols)
+uint8_t dimColor(uint8_t c) { return (uint8_t)(((c & 0xC0) >> 1) | ((c & 0x18) >> 1) | ((c >> 1) & 1)); }
 
 void drawBuddyView(bool full) {
   // The symbols show the live readings (region 1 = drop, 2 = thermometer, 3 = sun):
@@ -380,6 +393,7 @@ void drawBuddyView(bool full) {
   display.drawRect(14, 55, 67, 5, TSRectangleFilled, RGB8(0, 0, 1));
   drawTinyText(47 - tinyTextWidth(label) / 2, 55, label, color);
 }
+#endif
 
 float moistureFrac() { return moisture / 100.0f; }
 float tempFrac()     { return temperature / 40.0f; }                    // 0-40 C
@@ -397,8 +411,8 @@ void drawMiniGauges() {
   for (uint8_t i = 0; i < 3; i++) {
     uint8_t y = 12 + i * 17;
     uint8_t bad = (i == 0 && moisture > MOISTURE_SOGGY) ? moodColor(MOOD_SOGGY) : C_BAD;
-    drawTinyText(3, y + 4, i == 0 ? "S" : i == 1 ? "T" : "L", ok[i] ? C_TEXT : bad);
-    drawVBar(19, y, 4, SPRITE_SIZE, fr[i], ok[i] ? C_OK : bad);
+    drawTinyText(3, y + 5, i == 0 ? "S" : i == 1 ? "T" : "L", ok[i] ? C_TEXT : bad);   // S soil, T temperature, L light
+    drawVBar(10, y, 7, 14, fr[i], ok[i] ? C_OK : bad);
   }
 }
 
@@ -711,7 +725,9 @@ void drawGraphView(uint8_t metric, bool full) {
 // ================================================================ view control
 void redrawView(bool full) {
   switch (view) {
+#if USE_SCENE
     case VIEW_BUDDY: drawBuddyView(full); break;
+#endif
     case VIEW_PET:
       if (full) drawPetView();
       else { drawHeader(MOOD_NAMES[mood], moodColor(mood)); drawMiniGauges(); }
