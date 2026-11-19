@@ -873,6 +873,7 @@
     try { await port.setSignals({ dataTerminalReady: true }); } catch (_) {}
     live.port = port;
     live.sensors = null;
+    live.lastLine = '';
     resetData();
     $('connectBtn').hidden = true;
     $('disconnectBtn').hidden = false;
@@ -915,6 +916,7 @@
         const lines = buf.split(/\r?\n/);
         buf = lines.pop();
         for (const ln of lines) {
+          if (ln.trim()) live.lastLine = ln.trim();   // shown under the status line, to help diagnose a quiet device
           const r = parseLine(ln);
           if (r && source === 'live') { live.lastAt = Date.now(); if (r.sensors) live.sensors = r.sensors; syncBacklog(r); addReading(r); }
         }
@@ -1490,6 +1492,11 @@
     }
     const last = history[history.length - 1];
     $('lastUpdate').textContent = last ? `Last reading ${fmtClock(last.clock)}` : '';
+    if (source === 'live' && live.port) {
+      $('serialNote').textContent = live.lastLine
+        ? `Device says: ${live.lastLine}`
+        : 'Connected, but the device has sent nothing yet.';
+    }
   }
   setInterval(() => { if (source === 'live') renderStatus(); }, 1000);
 

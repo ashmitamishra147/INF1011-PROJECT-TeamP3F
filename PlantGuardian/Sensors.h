@@ -60,8 +60,9 @@ static const uint8_t MOISTURE_ADDR = MOISTURE_ADDR_OVERRIDE;
 // style capacitive sensor; EVERY sensor reads a little differently, so check
 // the raw value printed to Serial in dry air vs submerged in water and update
 // these two numbers for accurate percentages.
-static uint16_t moistureDry = 280;    // typical reading in dry air
-static uint16_t moistureWet = 560;    // typical reading submerged in water
+// TinyCircuits' own limits for this Wireling (Planty Kit tutorial: MINCAPREAD 710, MAXCAPREAD 975).
+static uint16_t moistureDry = 710;    // reading in dry air
+static uint16_t moistureWet = 975;    // reading submerged in water
 
 // ---------------------------------------------------------------------------
 // Reading struct returned to the UI layer.
@@ -108,18 +109,39 @@ static bool i2cReadN(uint8_t addr, uint8_t reg, uint8_t* buf, uint8_t n) {
 static float tsl2572GainVal = 8.0f;   // configured below (x8)
 static float tsl2572AtimeMs = 51.0f;  // 256 - ATIME(0xED)=19 cycles -> ~51ms
 
+// The Wireling adapter power-cycles a port every time it is selected, and that resets this chip. So the chip
+// must be set up again after every selectPort(), not once at boot (otherwise it never measures and reads 0).
+// Sequence found to work: power on, short wait, configure, then enable the ADC.
+#ifndef PORT_SETTLE_MS
+#define PORT_SETTLE_MS 150          // let a freshly selected port's sensor power up before talking to it
+#endif
+
 static bool tsl2572Begin() {
-  // Power on + enable ADC.
-  if (!i2cWrite8(TSL2572_ADDR, TSL_CMD | 0x00, 0x03)) return false; // PON|AEN
+  // The first transactions after a port switch are refused, so retry the power-on write for a few ms.
+  bool on = false;
+  for (uint8_t i = 0; i < 8 && !on; i++) {
+    on = i2cWrite8(TSL2572_ADDR, TSL_CMD | 0x00, 0x01);                // PON
+    if (!on) delay(5);
+  }
+  if (!on) return false;
+  delay(3);
   // ATIME: 0xED -> 19 integration cycles (~51 ms, max count ~65535).
   i2cWrite8(TSL2572_ADDR, TSL_CMD | 0x01, 0xED);
   // Gain x8 (CONTROL reg 0x0F, AGAIN bits = 0x02). Also clear the x0.16 scale.
   i2cWrite8(TSL2572_ADDR, TSL_CMD | 0x0F, 0x02);
   i2cWrite8(TSL2572_ADDR, TSL_CMD | 0x0D, 0x00);
-  return true;
+  return i2cWrite8(TSL2572_ADDR, TSL_CMD | 0x00, 0x03);              // PON|AEN: start measuring
 }
 
 static bool tsl2572ReadLux(float& lux) {
+  if (!tsl2572Begin()) return false;                   // set the chip up again (see note above)
+  bool ready = false;                                  // wait for the first finished conversion (STATUS bit 0)
+  for (uint8_t i = 0; i < 40 && !ready; i++) {
+    delay(5);
+    uint8_t st;
+    if (i2cReadN(TSL2572_ADDR, TSL_CMD | 0x13, &st, 1) && (st & 0x01)) ready = true;
+  }
+  if (!ready) return false;
   uint8_t d[4];
   if (!i2cReadN(TSL2572_ADDR, TSL_CMD | TSL_AUTOINC | 0x14, d, 4)) return false;
   uint16_t c0 = (uint16_t)d[0] | ((uint16_t)d[1] << 8);   // full spectrum
@@ -167,7 +189,10 @@ static bool pct2075ReadC(float& tempC) {
 //   0x00 GET_CAPACITANCE (2 bytes, big-endian) -> higher = wetter
 //   0x05 GET_VERSION     (1 byte)  e.g. 0x22 = firmware 2.2
 //   0x06 RESET           (write only)
-#define MOIST_REG_CAPACITANCE 0x00
+// NOTE: this Wireling (AST1037, ATtiny25 at 0x30) is NOT a generic Chirp sensor. TinyCircuits' firmware
+// takes command byte 1 = moisture (2 = temperature), then a read of 2 bytes after ~5 ms. Sending the Chirp
+// register 0x00 made it hold the I2C data line low and kill the whole bus.
+#define MOIST_REG_CAPACITANCE 0x01
 #define MOIST_REG_VERSION     0x05
 #define MOIST_REG_RESET       0x06
 
@@ -181,7 +206,7 @@ static void moistureWriteReg(uint8_t reg) {
 // Read a 16-bit big-endian register using the Chirp sequence.
 static bool moistureRead16(uint8_t reg, uint16_t& out) {
   moistureWriteReg(reg);
-  delay(20);                           // sensor needs time to latch the value
+  delay(5);                            // TinyCircuits' own code waits 5 ms here
   uint8_t got = Wire.requestFrom((uint8_t)MOISTURE_ADDR, (uint8_t)2);
   if (got != 2) return false;
   uint8_t hi = Wire.read();
@@ -290,14 +315,17 @@ inline SensorReadings sensorsRead() {
 
   // --- Temperature ---
   Wireling.selectPort(TEMP_PORT);
+  delay(PORT_SETTLE_MS);
   r.tempOk = pct2075ReadC(r.tempC);
 
   // --- Light ---
   Wireling.selectPort(LIGHT_PORT);
+  delay(PORT_SETTLE_MS);
   r.lightOk = tsl2572ReadLux(r.lux);
 
   // --- Moisture ---
   Wireling.selectPort(MOISTURE_PORT);
+  delay(PORT_SETTLE_MS);
   r.moistureOk = moistureReadRaw(r.moistureRaw);
   if (r.moistureOk) r.moisturePct = moisturePercent(r.moistureRaw);
 
