@@ -3,3 +3,5 @@ build/
 
 dashboard/.env
 PlantGuardian/secrets.h
+
+dashboard/.limits.json

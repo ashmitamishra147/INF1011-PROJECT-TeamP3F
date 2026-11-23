@@ -124,6 +124,32 @@ const recent = [];          // last readings, replayed to a dashboard that opens
 const RECENT_MAX = 300;
 const watchers = new Set();
 let lastIngestAt = 0;
+let lastWasTagged = false;
+
+// ---- the plant's limits: the dashboard (My plant card) sets them here, and every reply to the board carries them,
+// so the TinyScreen+ face judges the plant by the same limits as the dashboard. Kept in .limits.json across restarts.
+const LIMITS_FILE = path.join(ROOT, '.limits.json');
+let limits = null;   // { soil: [thirsty below, soggy above], temp: cold below, lux: dark below }
+function checkLimits(j) {
+  const n = (v, lo, hi) => { v = Math.round(Number(v)); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : NaN; };
+  const out = { soil: [n(j && j.soil && j.soil[0], 0, 100), n(j && j.soil && j.soil[1], 0, 100)], temp: n(j && j.temp, 0, 40), lux: n(j && j.lux, 1, 1000) };
+  if (![...out.soil, out.temp, out.lux].every(Number.isFinite) || out.soil[0] >= out.soil[1]) throw new Error('bad limits');
+  return out;
+}
+try { limits = checkLimits(JSON.parse(fs.readFileSync(LIMITS_FILE, 'utf8'))); } catch (_) {}
+
+function handleLimits(req, res) {
+  let raw = '';
+  req.on('data', (c) => { raw += c; if (raw.length > 500) req.destroy(); });
+  req.on('end', () => {
+    try {
+      limits = checkLimits(JSON.parse(raw));
+      fs.writeFile(LIMITS_FILE, JSON.stringify(limits), () => {});
+      console.log(`[${new Date().toLocaleTimeString()}] plant limits: soil ${limits.soil[0]}-${limits.soil[1]}%, min ${limits.temp} C, min ${limits.lux} lx`);
+      sendJson(res, 200, limits);
+    } catch (_) { sendJson(res, 400, { error: 'bad-limits' }); }
+  });
+}
 
 function handleIngest(req, res) {
   const token = config().deviceToken;
@@ -132,12 +158,21 @@ function handleIngest(req, res) {
   req.on('data', (c) => { raw += c; if (raw.length > 500) req.destroy(); });
   req.on('end', () => {
     const line = raw.trim();
-    if (!/^[\w.,+\- ]{5,300}$/.test(line) || line.split(',').length < 4) { res.writeHead(400); return res.end(); }
+    if (!/^[\w.,+:\- ]{5,300}$/.test(line) || line.split(',').length < 4) { res.writeHead(400); return res.end(); }
+    // After a restart the board tags its first readings with why it restarted (",R:BOD33" = power dipped). Log it once.
+    const tag = line.match(/,R:([A-Z0-9?-]+)/);
+    if (tag && !lastWasTagged) console.log(`[${new Date().toLocaleTimeString()}] board restarted, reset cause: ${tag[1]}`);
+    lastWasTagged = !!tag;
     const msg = { line, at: Date.now() };
     lastIngestAt = msg.at;
     recent.push(msg);
     if (recent.length > RECENT_MAX) recent.shift();
     for (const w of watchers) w.write(`data: ${JSON.stringify(msg)}\n\n`);
+    if (limits) {   // reply with the limits as "soilLo,soilHi,temp,lux" for the board to adopt
+      const body = `${limits.soil[0]},${limits.soil[1]},${limits.temp},${limits.lux}\n`;
+      res.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Length': Buffer.byteLength(body), Connection: 'close' });
+      return res.end(body);
+    }
     res.writeHead(204); res.end();
   });
 }
@@ -155,6 +190,7 @@ http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'POST' && url.pathname === '/api/thresholds') return handleThresholds(req, res);
   if (req.method === 'POST' && url.pathname === '/api/ingest') return handleIngest(req, res);
+  if (req.method === 'POST' && url.pathname === '/api/limits') return handleLimits(req, res);
   if (req.method === 'GET' && url.pathname === '/api/events') return handleEvents(req, res);
   if (req.method === 'GET' && url.pathname === '/api/status') return sendJson(res, 200, { gemini: !!config().key, wifi: true, lastIngestAt });
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }

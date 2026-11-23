@@ -9,14 +9,11 @@
   SOGGY (over-watered). Healthy range is 30-80%.
 
   Screens (cycle with the bottom buttons):
-    1. BUDDY   - the picture from plantguardian.jpg (plant, drop = soil, thermometer =
-                 temperature, sun = light). A symbol goes dull when its reading is out of
-                 range, and the status box says OK / THIRSTY / COLD / SLEEPY / SOGGY
-    2. PET     - the plant's face, driven by its mood
-    3. VITALS  - the raw numbers behind the mood, with threshold markers
-    4. SOIL    - soil moisture graph + predicted next watering time
-    5. TEMP    - temperature graph
-    6. LIGHT   - light graph (log scale)
+    1. PET     - the plant's face, driven by its mood
+    2. VITALS  - the raw numbers behind the mood, with threshold markers
+    3. SOIL    - soil moisture graph + predicted next watering time
+    4. TEMP    - temperature graph
+    5. LIGHT   - light graph (log scale)
   (dashed lines on each graph mark the mood thresholds; the soil graph has two)
 
   Buttons:
@@ -51,12 +48,6 @@
 #include "secrets.h"
 #endif
 
-// 1 = include sprites.h and show the BUDDY picture screen (needs the 59 KB picture data); 0 = leave both out
-#define USE_SCENE 0
-#if USE_SCENE
-#include "sprites.h"
-#endif
-
 const unsigned long SENSOR_INTERVAL_MS = 2000;   // "check every 2 seconds"
 const unsigned long ANIM_INTERVAL_MS   = 350;    // face animation speed
 const unsigned long DIM_AFTER_MS       = 30000;  // dim if nothing changes for 30 s
@@ -64,10 +55,11 @@ const uint8_t BRIGHT_NORMAL = 10;                // 0-15
 const uint8_t BRIGHT_DIM    = 3;
 
 // Mood thresholds
-const float MOISTURE_THIRSTY = 30.0;  // % below this -> Thirsty
-const float MOISTURE_SOGGY   = 80.0;  // % above this -> Soggy (over-watered)
-const float TEMP_COLD        = 18.0;  // C below this -> Cold
-const int   LIGHT_DARK       = 100;   // lux below this -> Sleepy
+// Mood limits. These are the defaults; with WiFi on, the dashboard's chosen plant overrides them (see applyLimits).
+float MOISTURE_THIRSTY = 30.0;  // % below this -> Thirsty
+float MOISTURE_SOGGY   = 80.0;  // % above this -> Soggy (over-watered)
+float TEMP_COLD        = 18.0;  // C below this -> Cold
+int   LIGHT_DARK       = 100;   // lux below this -> Sleepy
 
 // One simulated sample = 30 minutes of plant time (used for watering prediction)
 const float HOURS_PER_SAMPLE = 0.5;
@@ -93,9 +85,6 @@ const uint8_t C_WATER    = RGB8(1, 6, 7);
 // ---------------------------------------------------------------- types
 enum Mood { MOOD_HAPPY, MOOD_THIRSTY, MOOD_COLD, MOOD_SLEEPY, MOOD_SOGGY, MOOD_COUNT };
 enum View {
-#if USE_SCENE
-  VIEW_BUDDY,
-#endif
   VIEW_PET, VIEW_VITALS, VIEW_GRAPH_SOIL, VIEW_GRAPH_TEMP, VIEW_GRAPH_LIGHT, VIEW_COUNT };
 enum Metric { MET_SOIL, MET_TEMP, MET_LIGHT, MET_COUNT };
 
@@ -163,11 +152,7 @@ TinyScreen display = TinyScreen(TinyScreenPlus);
 float moisture = 0, temperature = 0;
 int   lightLevel = 0;
 Mood  mood = MOOD_HAPPY;
-#if USE_SCENE
-View  view = VIEW_BUDDY;
-#else
 View  view = VIEW_PET;
-#endif
 
 uint8_t simIndex = 0;     // position in TIMELINE
 uint8_t simMode  = 0;     // 0 = timeline, 1..5 = force mood (simMode-1)
@@ -353,7 +338,7 @@ void drawVBar(uint8_t x, uint8_t top, uint8_t w, uint8_t h, float frac, uint8_t 
   if (fh) display.drawRect(x, top + h - fh, w, fh, TSRectangleFilled, color);
 }
 
-// Tiny 3x5 pixel font, A-Z, used for the small labels (S/T/L, SOIL, TEMP, LUX) and the BUDDY screen's status word
+// Tiny 3x5 pixel font, A-Z, used for the small labels (S/T/L, SOIL, TEMP, LUX)
 #define G3(r0, r1, r2, r3, r4) ((uint16_t)(((r0) << 12) | ((r1) << 9) | ((r2) << 6) | ((r3) << 3) | (r4)))
 const uint16_t TINY_FONT[26] = {
   G3(2,5,7,5,5), G3(6,5,6,5,6), G3(3,4,4,4,3), G3(6,5,5,5,6), G3(7,4,6,4,7), G3(7,4,6,4,4), // A B C D E F
@@ -374,64 +359,6 @@ void drawTinyText(uint8_t x, uint8_t y, const char *s, uint8_t color) {
         if ((g >> ((4 - row) * 3 + (2 - col))) & 1) display.drawPixel(x + col, y + row, color);
   }
 }
-
-#if USE_SCENE
-// ================================================================ BUDDY view: the whole picture
-// Halve each colour channel of an 8-bit BBBGGGRR colour (used for "out of range" symbols)
-uint8_t dimColor(uint8_t c) { return (uint8_t)(((c & 0xC0) >> 1) | ((c & 0x18) >> 1) | ((c >> 1) & 1)); }
-
-void drawBuddyView(bool full) {
-  // The symbols show the live readings (region 1 = drop, 2 = thermometer, 3 = sun):
-  //  - drop fills from the bottom with soil moisture (0-100 %)
-  //  - thermometer fills from the bottom with temperature (0-40 C)
-  //  - sun brightens in 4 steps with light (log scale)
-  static uint8_t top[4], bot[4];
-  static bool measured = false;
-  if (!measured) {
-    for (uint8_t r = 1; r < 4; r++) { top[r] = 255; bot[r] = 0; }
-    for (uint16_t i = 0; i < (uint16_t)SCENE_W * SCENE_H; i++) {
-      uint8_t r = SCENE_REG[i], y = i / SCENE_W;
-      if (!r) continue;
-      if (y < top[r]) top[r] = y;
-      if (y > bot[r]) bot[r] = y;
-    }
-    measured = true;
-  }
-  float fr[4] = { 0, constrain(moistureFrac(), 0, 1), constrain(tempFrac(), 0, 1), constrain(lightFrac(), 0, 1) };
-  uint8_t level[4];                      // rows at or below this y are "full"
-  for (uint8_t r = 1; r < 3; r++) level[r] = bot[r] + 1 - (uint8_t)(fr[r] * (bot[r] - top[r] + 1) + 0.5f);
-  uint8_t sunDim = fr[3] < 0.2f ? 3 : fr[3] < 0.4f ? 2 : fr[3] < 0.6f ? 1 : 0;
-  if (full) display.clearScreen();
-
-  // the picture, streamed row by row (symbols whose reading is out of range are drawn dull)
-  uint8_t row[SCENE_W];
-  display.setX(SCENE_X, SCENE_X + SCENE_W - 1);
-  display.setY(0, SCENE_H - 1);
-  display.startData();
-  for (uint8_t y = 0; y < SCENE_H; y++) {
-    for (uint8_t x = 0; x < SCENE_W; x++) {
-      uint16_t i = (uint16_t)y * SCENE_W + x;
-      uint8_t c = SCENE_IMG[i], r = SCENE_REG[i];
-      if (r == 3) { for (uint8_t d = 0; d < sunDim; d++) c = dimColor(c); }
-      else if (r && y < level[r]) c = dimColor(dimColor(c));
-      row[x] = c;
-    }
-    display.writeBuffer(row, SCENE_W);
-  }
-  display.endTransfer();
-
-  // title: redrawn crisply (at 64 pixels tall the picture's own lettering turns to mush)
-  display.drawRect(37, 1, 22, 5, TSRectangleFilled, RGB8(0, 0, 1));
-  drawTinyText(48 - tinyTextWidth("BUDDY") / 2, 1, "BUDDY", RGB8(1, 6, 4));
-
-  // status word in the picture's status box (where the picture says "OK")
-  const char *label = (mood == MOOD_HAPPY) ? "OK" : MOOD_NAMES[mood];
-  uint8_t color = (mood == MOOD_HAPPY) ? RGB8(1, 6, 4) : (mood == MOOD_SLEEPY ? RGB8(2, 3, 5) : moodColor(mood));
-  // the box's inside spans x 14..80, y 55..59: centre the word in it (the longest, THIRSTY, is 27 px wide)
-  display.drawRect(14, 55, 67, 5, TSRectangleFilled, RGB8(0, 0, 1));
-  drawTinyText(47 - tinyTextWidth(label) / 2, 55, label, color);
-}
-#endif
 
 float moistureFrac() { return moisture / 100.0f; }
 float tempFrac()     { return temperature / 40.0f; }                    // 0-40 C
@@ -763,9 +690,6 @@ void drawGraphView(uint8_t metric, bool full) {
 // ================================================================ view control
 void redrawView(bool full) {
   switch (view) {
-#if USE_SCENE
-    case VIEW_BUDDY: drawBuddyView(full); break;
-#endif
     case VIEW_PET:
       if (full) drawPetView();
       else { drawHeader(MOOD_NAMES[mood], moodColor(mood)); drawMiniGauges(); }
@@ -787,41 +711,93 @@ void wake() {
 #if USE_WIFI && !USE_SIMULATED_DATA
 static bool          wifiUp        = false;
 static unsigned long wifiRetryAtMs = 0;       // earliest time we may try (re)connecting or sending again
-const unsigned long  WIFI_RETRY_MS = 30000;   // a failed connect can block ~8 s, so don't retry too often
+static uint8_t       wifiFails     = 0;       // joins/sends that failed in a row; after 3 the WiFi module is power-cycled
+const unsigned long  WIFI_RETRY_MS = 10000;   // wait between attempts after a failure (a join can block the screen for ~8 s)
 
-static void wifiConnect() {
+// Join the network. reset = true power-cycles the WiFi module first, which recovers a link that got stuck.
+static void wifiConnect(bool reset) {
+  if (reset) {
+    SerialUSB.print(F("# wifi: resetting the WiFi module at ")); SerialUSB.print(millis() / 1000); SerialUSB.println(F(" s"));
+    WiFi.end();
+    delay(200);
+    WiFi.setPins(8, 2, A3, -1);
+  }
+  SerialUSB.println(F("# wifi: joining network..."));
   WiFi.begin(WIFI_SSID, WIFI_PASS);           // blocks until connected or the timeout set in setup()
   wifiUp = (WiFi.status() == WL_CONNECTED);
   wifiRetryAtMs = millis() + WIFI_RETRY_MS;
   SerialUSB.print(F("# wifi: "));
-  if (wifiUp) { SerialUSB.print(F("connected, my IP ")); SerialUSB.println(IPAddress(WiFi.localIP())); }
-  else { SerialUSB.print(F("NOT connected, status code ")); SerialUSB.println(WiFi.status()); }   // 1=no shield found, 4=connect failed, 6=disconnected
+  if (wifiUp) { wifiFails = 0; WiFi.lowPowerMode(); SerialUSB.print(F("connected, my IP ")); SerialUSB.println(IPAddress(WiFi.localIP())); }
+  else { if (wifiFails < 255) wifiFails++; SerialUSB.print(F("NOT connected, status code ")); SerialUSB.println(WiFi.status()); }   // 1=no shield found, 4=connect failed, 6=disconnected
 }
 
-// POST one CSV reading line to the dashboard server. Never keeps the sketch waiting for long.
+static void wifiFail(const __FlashStringHelper* why) {
+  if (wifiFails < 255) wifiFails++;
+  wifiUp = false;
+  wifiRetryAtMs = millis() + WIFI_RETRY_MS;
+  SerialUSB.print(F("# wifi: ")); SerialUSB.print(why);
+  SerialUSB.print(F(" (")); SerialUSB.print(wifiFails); SerialUSB.print(F(" in a row, at ")); SerialUSB.print(millis() / 1000); SerialUSB.println(F(" s)"));
+}
+
+// The server answers each reading with the plant's limits as "soilLo,soilHi,temp,lux". Adopt them so the face
+// judges the plant by the same limits as the dashboard. Ignores anything that doesn't look right.
+static void applyLimits(const String& body) {
+  int lo, hi, t, l;
+  if (sscanf(body.c_str(), "%d,%d,%d,%d", &lo, &hi, &t, &l) != 4) return;
+  if (lo < 0 || hi > 100 || lo >= hi || t < 0 || t > 40 || l < 1 || l > 1000) return;
+  if (lo == (int)MOISTURE_THIRSTY && hi == (int)MOISTURE_SOGGY && t == (int)TEMP_COLD && l == LIGHT_DARK) return;   // unchanged
+  MOISTURE_THIRSTY = lo; MOISTURE_SOGGY = hi; TEMP_COLD = t; LIGHT_DARK = l;
+  SerialUSB.print(F("# plant limits from dashboard: soil ")); SerialUSB.print(lo); SerialUSB.print('-'); SerialUSB.print(hi);
+  SerialUSB.print(F("%, min ")); SerialUSB.print(t); SerialUSB.print(F(" C, min ")); SerialUSB.print(l); SerialUSB.println(F(" lx"));
+}
+
+// POST one CSV reading line to the dashboard server and check the server accepted it.
+// Never keeps the sketch waiting for long, and recovers by itself when the link drops.
 static void wifiSend(const String& line) {
-  if (millis() < wifiRetryAtMs && !wifiUp) return;
-  if (WiFi.status() != WL_CONNECTED) { wifiUp = false; wifiConnect(); if (!wifiUp) return; }
+  if (!wifiUp && millis() < wifiRetryAtMs) return;
+  // rejoin if the shield says it is disconnected, or if sends keep failing even though it says "connected" (a silently dead link)
+  if (wifiFails >= 3 || WiFi.status() != WL_CONNECTED) {
+    wifiUp = false;
+    wifiConnect(wifiFails >= 3);
+    if (!wifiUp) return;
+  }
 
   WiFiClient client;
-  if (!client.connect(IPAddress(SERVER_IP), SERVER_PORT)) {
-    SerialUSB.println(F("# wifi: on the network but cannot reach the dashboard server (check SERVER_IP / firewall)"));
-    wifiRetryAtMs = millis() + 10000;         // server off or wrong IP: pause sending for 10 s
-    wifiUp = false;
-    return;
-  }
+  if (!client.connect(IPAddress(SERVER_IP), SERVER_PORT)) { client.stop(); wifiFail(F("cannot reach the dashboard server")); return; }
   client.print(F("POST /api/ingest HTTP/1.1\r\nHost: plantguardian\r\nX-Token: "));
   client.print(F(DEVICE_TOKEN));
   client.print(F("\r\nContent-Type: text/plain\r\nConnection: close\r\nContent-Length: "));
   client.print(line.length());
   client.print(F("\r\n\r\n"));
   client.print(line);
-  unsigned long t = millis();                  // wait briefly for the reply so the data is really sent
-  while (!client.available() && millis() - t < 1000) delay(5);
+  unsigned long t = millis();                  // wait briefly for the reply so we know the data really arrived
+  while (!client.available() && millis() - t < 1500) delay(5);
+  String status = client.available() ? client.readStringUntil('\n') : String();
+  bool hasLimits = status.indexOf(F(" 200")) >= 0;           // 200 = accepted + the plant's limits in the body; 204 = accepted, no limits set yet
+  String body;
+  if (hasLimits) {
+    for (uint8_t i = 0; i < 10; i++) { String h = client.readStringUntil('\n'); if (h.length() <= 1) break; }   // skip the reply headers
+    body = client.readStringUntil('\n');
+  }
   client.stop();
+  if (!hasLimits && status.indexOf(F(" 204")) < 0) { wifiFail(status.length() ? F("server rejected the reading (check DEVICE_TOKEN)") : F("no reply from the server")); return; }
   wifiUp = true;
+  wifiFails = 0;
+  if (hasLimits) applyLimits(body);
 }
 #endif
+
+// Why the chip last restarted, read from the SAMD21 reset-cause register. BOD33 / POWER-ON on battery = the supply sagged.
+static const char* resetCauseName() {
+  uint8_t c = PM->RCAUSE.reg;
+  if (c & PM_RCAUSE_BOD33) return "BOD33";
+  if (c & PM_RCAUSE_BOD12) return "BOD12";
+  if (c & PM_RCAUSE_POR)   return "POWER-ON";
+  if (c & PM_RCAUSE_WDT)   return "WDT";
+  if (c & PM_RCAUSE_SYST)  return "SOFT";
+  if (c & PM_RCAUSE_EXT)   return "RESET-BTN";
+  return "?";
+}
 
 void takeReading() {
 #if !USE_SIMULATED_DATA
@@ -855,6 +831,8 @@ void takeReading() {
   line += tempOk     ? F(",Tok") : F(",TERR");
   line += lightOk    ? F(",Lok") : F(",LERR");
   line += simMode    ? F(",PRESET") : F(",LIVE");
+  static uint8_t bootTag = 12;    // on the first readings after a restart, say why it restarted; the dashboard server logs it
+  if (bootTag) { bootTag--; line += F(",R:"); line += resetCauseName(); }
 #endif
   SerialUSB.println(line);
 
@@ -907,7 +885,7 @@ void setup() {
 #if USE_WIFI && !USE_SIMULATED_DATA
   WiFi.setPins(8, 2, A3, -1);        // WiFi TinyShield pin map (from TinyCircuits' tutorial); must come before any other WiFi call
   WiFi.setTimeout(8000);             // give up on a missing network after 8 s instead of the default
-  wifiRetryAtMs = millis() + 3000;   // first connect happens in loop(), after the screen is up, so a stuck network can't leave it blank
+  wifiRetryAtMs = millis() + 8000;   // first connect happens in loop(), after the screen is up, so a stuck network can't leave it blank
 #endif
 
   takeReading();
