@@ -175,15 +175,6 @@
     display: block; width: 100%; aspect-ratio: 96 / 56; background: #000; border-radius: 6px;
     image-rendering: pixelated; image-rendering: crisp-edges;
   }
-  .device canvas[hidden], .device .scene[hidden] { display: none; }
-  .scene { container-type: inline-size; position: relative; width: 100%; aspect-ratio: 1024 / 765; border-radius: 6px; overflow: hidden; background: #0a1026; }
-  .scene img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  .scene-layer { filter: grayscale(1) brightness(.3); clip-path: inset(0 0 100% 0); }
-  .scene-ok {
-    position: absolute; left: 10%; top: 86.2%; width: 77.5%; height: 7.8%; background: #0a1026;
-    display: flex; align-items: center; justify-content: center; white-space: nowrap; overflow: hidden;
-    font: 700 4.4cqw/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em;
-  }
   .linkbtn { background: none; border: 0; padding: 0; color: #9ab; font: inherit; text-decoration: underline; cursor: pointer; }
   .device .cap { color: #8a8a8a; font-size: 11px; text-align: center; margin-top: 8px; letter-spacing: .04em; }
   .mood-label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
@@ -377,15 +368,8 @@
     <section class="card span-6" aria-labelledby="moodName">
       <div class="hero">
         <div class="device">
-          <div class="scene" id="scene" role="img" aria-label="Plant buddy picture">
-            <img class="scene-base" src="assets/plantguardian-clean.png" alt="">
-            <img class="scene-layer" data-k="moisture" src="assets/layer-moisture.png" alt="">
-            <img class="scene-layer" data-k="temperature" src="assets/layer-temperature.png" alt="">
-            <img class="scene-layer" data-k="light" src="assets/layer-light.png" alt="">
-            <div class="scene-ok" id="sceneOk"></div>
-          </div>
-          <canvas id="pet" width="96" height="56" role="img" aria-label="Pixel-art plant face" hidden></canvas>
-          <div class="cap"><span id="devCap">TINYSCREEN+ · BUDDY</span> · <button type="button" class="linkbtn" id="viewToggle">show face</button></div>
+          <canvas id="pet" width="96" height="56" role="img" aria-label="Pixel-art plant face"></canvas>
+          <div class="cap">TINYSCREEN+ · FACE</div>
         </div>
         <div>
           <span class="mood-label"><span class="swatch" id="moodSwatch"></span>Current mood <span id="moodSince" class="note"></span></span>
@@ -495,6 +479,12 @@
   const savedPlant = loadPlant();
   const PLANT = savedPlant || { name: '', soil: PLANT_TYPES[0].soil, temp: PLANT_TYPES[0].temp, lux: PLANT_TYPES[0].lux, typeId: 'general' };
   const MOISTURE_THIRSTY = PLANT.soil[0], MOISTURE_SOGGY = PLANT.soil[1], TEMP_COLD = PLANT.temp, LIGHT_DARK = PLANT.lux;
+  // Share the plant's limits with the server, which hands them to the TinyScreen+ so its face agrees with this dashboard.
+  function pushLimits(p = PLANT) {
+    return fetch('/api/limits', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soil: p.soil, temp: p.temp, lux: p.lux }) }).catch(() => {});
+  }
+  if (savedPlant) pushLimits();   // a browser that never picked a plant (e.g. a phone) must not overwrite the choice made elsewhere
   const SENSOR_INTERVAL_MS = 2000, ANIM_INTERVAL_MS = 350;
   const HISTORY_MAX = 1800;   // 96 sample rows, or about an hour of real readings (one every 2 s)
   const WATER_JUMP = 15;    // moisture rise (percentage points) between readings that counts as a watering
@@ -977,19 +967,13 @@
       if (bad) { $('plantInfo').textContent = bad; return; }
       savePlant({ name: $('plantInput').value.trim(), typeId: 'custom', soil: [lo, hi], temp, lux });
     });
-    $('plantReset').addEventListener('click', () => {
+    $('plantReset').addEventListener('click', async () => {
       try { localStorage.removeItem('pg.plant'); } catch (_) {}
+      await pushLimits(PLANT_TYPES[0]);   // back to the general defaults on the board too
       location.reload();
     });
   })();
 
-  $('viewToggle').addEventListener('click', () => {
-    const face = $('scene').hidden === false;
-    $('scene').hidden = face;
-    canvas.hidden = !face;
-    $('devCap').textContent = face ? 'TINYSCREEN+ · FACE' : 'TINYSCREEN+ · BUDDY';
-    $('viewToggle').textContent = face ? 'show buddy' : 'show face';
-  });
   // ---------------------------------------------------------------- source switch
   function setSource(s) {
     if (s === source) return;
@@ -1243,28 +1227,6 @@
     const since = moodSince();
     $('moodSince').textContent = since !== null ? `· since ${fmtClock(since)}` : '';
     canvas.setAttribute('aria-label', `Pixel-art plant face looking ${info.name.toLowerCase()}`);
-    if (last) {
-      const okf = [last.moisture >= MOISTURE_THIRSTY && last.moisture <= MOISTURE_SOGGY, last.temp >= TEMP_COLD, last.lux >= LIGHT_DARK];
-      // Symbols mirror the readings: drop and thermometer fill from the bottom (the unfilled top part is dulled),
-      // the sun brightens in 4 steps with light. Boxes are the symbols' pixel bounds in the 1024x765 picture.
-      const clamp01 = (v) => Math.max(0, Math.min(1, v));
-      const layers = document.querySelectorAll('.scene-layer');
-      const fill = (n, y0, y1, f) => {
-        const lvl = y1 + 1 - f * (y1 - y0 + 1);
-        n.style.clipPath = `inset(0 0 ${(100 - lvl / 765 * 100).toFixed(2)}% 0)`;
-      };
-      fill(layers[0], 402, 527, clamp01(last.moisture / 100));
-      fill(layers[1], 322, 607, clamp01(last.temp / 40));
-      const lf = clamp01(Math.log10(last.lux + 1) / 3);
-      const sunStep = lf < 0.2 ? 0.2 : lf < 0.4 ? 0.4 : lf < 0.6 ? 0.65 : 1;
-      layers[2].style.clipPath = 'none';
-      layers[2].style.filter = sunStep >= 1 ? 'none' : `grayscale(${(1 - sunStep).toFixed(2)}) brightness(${(0.25 + 0.75 * sunStep).toFixed(2)})`;
-      const ok = $('sceneOk');
-      ok.textContent = mood === 'HAPPY' ? 'OK' : info.name.toUpperCase();
-      ok.style.color = mood === 'HAPPY' ? '#3ddc97' : '#f2b94b';
-      $('scene').setAttribute('aria-label', `Plant buddy picture: ${info.name}. Soil ${okf[0] ? 'ok' : 'needs attention'}, temperature ${okf[1] ? 'ok' : 'needs attention'}, light ${okf[2] ? 'ok' : 'needs attention'}`);
-    }
-
     const reasons = $('reasons');
     reasons.textContent = '';
     if (!last) return;
