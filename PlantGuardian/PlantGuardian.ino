@@ -43,6 +43,14 @@
 #include "Sensors.h"   // Wireling drivers: PCT2075 (temp), TSL2572 (light), capacitive soil moisture
 #endif
 
+// 1 = also send every reading over the WiFi TinyShield to the dashboard server (so it works on battery, no USB).
+// Fill in secrets.h first. USB serial output keeps working either way.
+#define USE_WIFI 1
+#if USE_WIFI && !USE_SIMULATED_DATA
+#include <WiFi101.h>
+#include "secrets.h"
+#endif
+
 // 1 = include sprites.h and show the BUDDY picture screen (needs the 59 KB picture data); 0 = leave both out
 #define USE_SCENE 0
 #if USE_SCENE
@@ -775,6 +783,46 @@ void wake() {
   if (dimmed) { display.setBrightness(BRIGHT_NORMAL); dimmed = false; }
 }
 
+// ---------------------------------------------------------------- WiFi (battery / no-USB mode)
+#if USE_WIFI && !USE_SIMULATED_DATA
+static bool          wifiUp        = false;
+static unsigned long wifiRetryAtMs = 0;       // earliest time we may try (re)connecting or sending again
+const unsigned long  WIFI_RETRY_MS = 30000;   // a failed connect can block ~8 s, so don't retry too often
+
+static void wifiConnect() {
+  WiFi.begin(WIFI_SSID, WIFI_PASS);           // blocks until connected or the timeout set in setup()
+  wifiUp = (WiFi.status() == WL_CONNECTED);
+  wifiRetryAtMs = millis() + WIFI_RETRY_MS;
+  SerialUSB.print(F("# wifi: "));
+  if (wifiUp) { SerialUSB.print(F("connected, my IP ")); SerialUSB.println(IPAddress(WiFi.localIP())); }
+  else { SerialUSB.print(F("NOT connected, status code ")); SerialUSB.println(WiFi.status()); }   // 1=no shield found, 4=connect failed, 6=disconnected
+}
+
+// POST one CSV reading line to the dashboard server. Never keeps the sketch waiting for long.
+static void wifiSend(const String& line) {
+  if (millis() < wifiRetryAtMs && !wifiUp) return;
+  if (WiFi.status() != WL_CONNECTED) { wifiUp = false; wifiConnect(); if (!wifiUp) return; }
+
+  WiFiClient client;
+  if (!client.connect(IPAddress(SERVER_IP), SERVER_PORT)) {
+    SerialUSB.println(F("# wifi: on the network but cannot reach the dashboard server (check SERVER_IP / firewall)"));
+    wifiRetryAtMs = millis() + 10000;         // server off or wrong IP: pause sending for 10 s
+    wifiUp = false;
+    return;
+  }
+  client.print(F("POST /api/ingest HTTP/1.1\r\nHost: plantguardian\r\nX-Token: "));
+  client.print(F(DEVICE_TOKEN));
+  client.print(F("\r\nContent-Type: text/plain\r\nConnection: close\r\nContent-Length: "));
+  client.print(line.length());
+  client.print(F("\r\n\r\n"));
+  client.print(line);
+  unsigned long t = millis();                  // wait briefly for the reply so the data is really sent
+  while (!client.available() && millis() - t < 1000) delay(5);
+  client.stop();
+  wifiUp = true;
+}
+#endif
+
 void takeReading() {
 #if !USE_SIMULATED_DATA
   refreshSensors();
@@ -789,26 +837,31 @@ void takeReading() {
   mood = newMood;
   if (moodChanged) wake();
 
+  // Build the CSV line once; it goes to USB serial and (if enabled) over WiFi.
+  String line;
 #if USE_SIMULATED_DATA
-  SerialUSB.print(simulatedClock()); SerialUSB.print(',');   // sample clock, minutes since midnight
+  line += simulatedClock();                                  // sample clock, minutes since midnight
 #else
   static unsigned long readingSeq = 0;
-  SerialUSB.print(readingSeq++);     SerialUSB.print(',');   // reading counter (the dashboard stamps the real time)
+  line += readingSeq++;                                      // reading counter (the dashboard stamps the real time)
 #endif
-  SerialUSB.print(moisture);         SerialUSB.print(',');
-  SerialUSB.print(temperature);      SerialUSB.print(',');
-  SerialUSB.print(lightLevel);       SerialUSB.print(',');
-  SerialUSB.print(MOOD_NAMES[mood]);
+  line += ','; line += String(moisture);
+  line += ','; line += String(temperature);
+  line += ','; line += lightLevel;
+  line += ','; line += MOOD_NAMES[mood];
 #if !USE_SIMULATED_DATA
   // sensor health + whether this reading is real or a demo preset, for the dashboard
-  SerialUSB.print(moistureOk ? F(",Mok") : F(",MERR"));
-  SerialUSB.print(tempOk     ? F(",Tok") : F(",TERR"));
-  SerialUSB.print(lightOk    ? F(",Lok") : F(",LERR"));
-  SerialUSB.print(simMode    ? F(",PRESET") : F(",LIVE"));
+  line += moistureOk ? F(",Mok") : F(",MERR");
+  line += tempOk     ? F(",Tok") : F(",TERR");
+  line += lightOk    ? F(",Lok") : F(",LERR");
+  line += simMode    ? F(",PRESET") : F(",LIVE");
 #endif
-  SerialUSB.println();
+  SerialUSB.println(line);
 
-  redrawView(moodChanged && view == VIEW_PET);
+  redrawView(moodChanged && view == VIEW_PET);     // draw first, then send, so the screen never waits on the network
+#if USE_WIFI && !USE_SIMULATED_DATA
+  wifiSend(line);
+#endif
 
 #if USE_SIMULATED_DATA
   if (simMode == 0 && !paused) simIndex = (simIndex + 1) % TIMELINE_LEN;
@@ -849,6 +902,12 @@ void setup() {
   Wireling.begin();                  // the adapter's I2C multiplexer
   Wireling.selectPort(LIGHT_PORT);
   tsl2572Begin();                    // light sensor needs a one-time setup; temperature and moisture don't
+#endif
+
+#if USE_WIFI && !USE_SIMULATED_DATA
+  WiFi.setPins(8, 2, A3, -1);        // WiFi TinyShield pin map (from TinyCircuits' tutorial); must come before any other WiFi call
+  WiFi.setTimeout(8000);             // give up on a missing network after 8 s instead of the default
+  wifiRetryAtMs = millis() + 3000;   // first connect happens in loop(), after the screen is up, so a stuck network can't leave it blank
 #endif
 
   takeReading();
