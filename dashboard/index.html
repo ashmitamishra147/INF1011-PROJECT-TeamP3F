@@ -347,11 +347,6 @@
     <button type="button" class="btn" id="resetBtn">Restart day</button>
   </div>
 
-  <div class="controls" id="liveControls" hidden>
-    <button type="button" class="btn primary" id="connectBtn">Connect TinyScreen+</button>
-    <button type="button" class="btn" id="disconnectBtn" hidden>Disconnect</button>
-  </div>
-
   <main class="grid">
 
     <!-- My plant -->
@@ -467,7 +462,7 @@
 
   <p class="footer">
     Mood rules (same as the device): soil above 80% → Soggy (over-watered), soil below 30% → Thirsty, else below 18 °C → Cold, else below 100 lx → Sleepy, else Happy.
-    Live mode reads the CSV lines the sketch prints over USB at 9600 baud (<code>time,moisture,temp,lux,mood</code>) and needs Chrome or Edge on a computer.
+    Live mode shows the readings the TinyScreen+ sends over WiFi to this page's server (<code>node serve.js</code>), so the board can run on battery with no USB cable.
   </p>
 </div>
 
@@ -829,22 +824,22 @@
   $('speedSel').addEventListener('change', (e) => { sim.speed = +e.target.value; simSchedule(); });
   $('resetBtn').addEventListener('click', () => { resetData(); simStart(); });
 
-  // ---------------------------------------------------------------- live (Web Serial)
-  const hasSerial = 'serial' in navigator;
-  const live = { port: null, reader: null, closed: null, lastAt: 0 };
+  // ---------------------------------------------------------------- live (WiFi)
+  const live = { port: null, reader: null, closed: null, lastAt: 0, wifi: null };
 
-  function parseLine(lineStr) {
+  // atMs: when the reading was taken (the WiFi server stamps it); defaults to now
+  function parseLine(lineStr, atMs) {
     const p = lineStr.trim().split(',');
     if (p.length < 4) return null;
     const [clock, m, t, l] = p.slice(0, 4).map(Number);
     if ([clock, m, t, l].some((v) => !Number.isFinite(v))) return null;
     // mood is worked out here from the plant's own limits (the device uses its built-in defaults)
     const mood = computeMood(m, t, l);
-    const r = { clock, moisture: m, temp: t, lux: l, mood, at: Date.now() };
+    const r = { clock, moisture: m, temp: t, lux: l, mood, at: atMs || Date.now() };
     // Real-sensor firmware sends: counter,moisture,temp,lux,MOOD,Mok|MERR,Tok|TERR,Lok|LERR,LIVE|PRESET
     // (the board has no clock, so the reading is stamped with this computer's time of day).
     if (p.length >= 8 && /^M(ok|ERR)$/.test(p[5])) {
-      const d = new Date();
+      const d = new Date(r.at);
       r.clock = d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
       r.real = true;
       r.sensors = { soil: p[5] === 'Mok', temp: p[6] === 'Tok', light: p[7] === 'Lok' };
@@ -868,75 +863,36 @@
     }
   }
 
-  async function openPort(port) {
-    await port.open({ baudRate: 9600 });
-    try { await port.setSignals({ dataTerminalReady: true }); } catch (_) {}
-    live.port = port;
-    live.sensors = null;
-    live.lastLine = '';
-    resetData();
-    $('connectBtn').hidden = true;
-    $('disconnectBtn').hidden = false;
-    renderStatus();
-    readLoop(port);
-  }
+  // ---- live over WiFi: the board posts to serve.js, which streams every reading here (also works on a phone)
+  const wifiOpen = () => !!live.wifi && live.wifi.readyState === EventSource.OPEN;
 
-  async function connectSerial() {
-    $('errMsg').textContent = '';
-    try {
-      await openPort(await navigator.serial.requestPort());
-    } catch (e) {
-      if (e && e.name !== 'NotFoundError') $('errMsg').textContent = 'Could not connect: ' + (e.message || e);
-    }
-  }
-
-  // On page load, reconnect by itself to a board the browser was already allowed to use (no popup needed).
-  async function autoConnect() {
-    if (!hasSerial) return;
-    try {
-      const ports = await navigator.serial.getPorts();
-      if (!ports.length) return;
-      const tc = ports.find((p) => (p.getInfo() || {}).usbVendorId === 0x03EB) || ports[0];
-      await openPort(tc);
-    } catch (e) {
-      $('errMsg').textContent = 'Could not open the saved device (is another program using it?): ' + (e.message || e);
-    }
-  }
-
-  async function readLoop(port) {
-    const decoder = new TextDecoderStream();
-    live.closed = port.readable.pipeTo(decoder.writable).catch(() => {});
-    live.reader = decoder.readable.getReader();
-    let buf = '';
-    try {
-      for (;;) {
-        const { value, done } = await live.reader.read();
-        if (done) break;
-        buf += value;
-        const lines = buf.split(/\r?\n/);
-        buf = lines.pop();
-        for (const ln of lines) {
-          if (ln.trim()) live.lastLine = ln.trim();   // shown under the status line, to help diagnose a quiet device
-          const r = parseLine(ln);
-          if (r && source === 'live') { live.lastAt = Date.now(); if (r.sensors) live.sensors = r.sensors; syncBacklog(r); addReading(r); }
-        }
+  function startWifi() {
+    if (live.wifi || !window.EventSource) return;
+    const es = new EventSource('/api/events');   // reconnects by itself if the server restarts
+    live.wifi = es;
+    es.onopen = () => renderStatus();
+    es.onerror = () => renderStatus();
+    // when the page opens, the server replays its recent readings so the charts aren't empty
+    es.addEventListener('history', (e) => {
+      if (source !== 'live') return;
+      let rows = [];
+      try { rows = JSON.parse(e.data); } catch (_) {}
+      for (const m of rows) {
+        if (history.length && m.at <= history[history.length - 1].at) continue;
+        const r = parseLine(m.line, m.at);
+        if (r) { live.lastAt = m.at; if (r.sensors) live.sensors = r.sensors; addReading(r, true); }
       }
-    } catch (e) {
-      $('errMsg').textContent = 'Device disconnected.';
-    }
-    await cleanupSerial();
-  }
-
-  async function cleanupSerial() {
-    const port = live.port;
-    live.port = null;
-    try { if (live.reader) await live.reader.cancel(); } catch (_) {}
-    try { if (live.closed) await live.closed; } catch (_) {}
-    try { if (port) await port.close(); } catch (_) {}
-    live.reader = null; live.closed = null;
-    $('connectBtn').hidden = false;
-    $('disconnectBtn').hidden = true;
-    renderStatus();
+      renderStatus();
+    });
+    es.onmessage = (e) => {
+      let m; try { m = JSON.parse(e.data); } catch (_) { return; }
+      live.lastLine = m.line;
+      const r = parseLine(m.line, m.at);
+      if (r && source === 'live') {
+        if (history.length && r.at <= history[history.length - 1].at) return;   // duplicate / out of order
+        live.lastAt = Date.now(); if (r.sensors) live.sensors = r.sensors; addReading(r);
+      }
+    };
   }
 
   // ---------------------------------------------------------------- my plant (care profile)
@@ -1027,8 +983,6 @@
     });
   })();
 
-  $('connectBtn').addEventListener('click', connectSerial);
-  $('disconnectBtn').addEventListener('click', cleanupSerial);
   $('viewToggle').addEventListener('click', () => {
     const face = $('scene').hidden === false;
     $('scene').hidden = face;
@@ -1036,11 +990,6 @@
     $('devCap').textContent = face ? 'TINYSCREEN+ · FACE' : 'TINYSCREEN+ · BUDDY';
     $('viewToggle').textContent = face ? 'show buddy' : 'show face';
   });
-  if (!hasSerial) {
-    $('connectBtn').disabled = true;
-    $('serialNote').textContent = 'Live USB needs Chrome or Edge on a computer.';
-  }
-
   // ---------------------------------------------------------------- source switch
   function setSource(s) {
     if (s === source) return;
@@ -1048,10 +997,9 @@
     $('srcSim').setAttribute('aria-pressed', String(s === 'sim'));
     $('srcLive').setAttribute('aria-pressed', String(s === 'live'));
     $('simControls').hidden = s !== 'sim';
-    $('liveControls').hidden = s !== 'live';
     $('errMsg').textContent = '';
     resetData();
-    if (s === 'sim') { if (live.port) cleanupSerial(); simStart(); }
+    if (s === 'sim') simStart();
     else { simSchedule(); }
     renderStatus();
   }
@@ -1474,11 +1422,11 @@
     if (source === 'sim') {
       dot.classList.add('sim');
       txt.textContent = sim.paused ? 'Simulated data · paused' : 'Simulated data';
-    } else if (!live.port) {
+    } else if (!wifiOpen()) {
       txt.textContent = 'Live device · not connected';
     } else if (live.lastAt && Date.now() - live.lastAt > 3 * SENSOR_INTERVAL_MS) {
       dot.classList.add('stale');
-      txt.textContent = 'Live device · no data';
+      txt.textContent = 'Live device · no data (is it powered and on WiFi?)';
     } else {
       const s = live.sensors;
       const bad = s ? [['soil', s.soil], ['temperature', s.temp], ['light', s.light]].filter(([, ok]) => !ok).map(([n]) => n) : [];
@@ -1487,12 +1435,12 @@
         txt.textContent = `Live device · ${bad.join(', ')} sensor${bad.length > 1 ? 's' : ''} not responding`;
       } else {
         dot.classList.add('live');
-        txt.textContent = live.lastAt ? 'Live device' : 'Live device · waiting for data';
+        txt.textContent = (live.lastAt ? 'Live device' : 'Live device · waiting for data') + ' · WiFi';
       }
     }
     const last = history[history.length - 1];
     $('lastUpdate').textContent = last ? `Last reading ${fmtClock(last.clock)}` : '';
-    if (source === 'live' && live.port) {
+    if (source === 'live' && wifiOpen()) {
       $('serialNote').textContent = live.lastLine
         ? `Device says: ${live.lastLine}`
         : 'Connected, but the device has sent nothing yet.';
@@ -1728,12 +1676,18 @@
   // ================================================================ start
   renderLegend();
   drawPet('HAPPY', 0);
-  if (hasSerial) {            // start on the real device (Chrome / Edge); Simulation is still one click away
-    setSource('live');
-    autoConnect();
-  } else {
-    simStart();
-  }
+  // Start on the real device over WiFi (works in any browser, e.g. a phone, as long as the page is served by serve.js).
+  // Simulation is still one click away.
+  (async () => {
+    let wifiServer = false;
+    try { wifiServer = (await fetch('/api/status', { cache: 'no-store' })).ok; } catch (_) {}
+    if (wifiServer) {
+      setSource('live');
+      startWifi();
+    } else {
+      simStart();
+    }
+  })();
 })();
 </script>
 </body>
