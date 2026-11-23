@@ -26,7 +26,11 @@ function readEnvFile() {
 }
 function config() {
   const f = readEnvFile();
-  return { key: process.env.GEMINI_API_KEY || f.GEMINI_API_KEY || '', model: process.env.GEMINI_MODEL || f.GEMINI_MODEL || 'gemini-2.5-flash' };
+  return {
+    key: process.env.GEMINI_API_KEY || f.GEMINI_API_KEY || '',
+    model: process.env.GEMINI_MODEL || f.GEMINI_MODEL || 'gemini-2.5-flash',
+    deviceToken: process.env.DEVICE_TOKEN || f.DEVICE_TOKEN || '',   // shared secret the board sends (see PlantGuardian/secrets.h)
+  };
 }
 
 // ---- ask Gemini for the limits of one plant type
@@ -114,11 +118,45 @@ function handleThresholds(req, res) {
   });
 }
 
+// ---- live readings from the TinyScreen+ over WiFi (so it works on battery, with no USB cable)
+// The board POSTs one CSV line per reading to /api/ingest; every open dashboard gets it through /api/events.
+const recent = [];          // last readings, replayed to a dashboard that opens later
+const RECENT_MAX = 300;
+const watchers = new Set();
+let lastIngestAt = 0;
+
+function handleIngest(req, res) {
+  const token = config().deviceToken;
+  if (token && req.headers['x-token'] !== token) { res.writeHead(401); return res.end(); }
+  let raw = '';
+  req.on('data', (c) => { raw += c; if (raw.length > 500) req.destroy(); });
+  req.on('end', () => {
+    const line = raw.trim();
+    if (!/^[\w.,+\- ]{5,300}$/.test(line) || line.split(',').length < 4) { res.writeHead(400); return res.end(); }
+    const msg = { line, at: Date.now() };
+    lastIngestAt = msg.at;
+    recent.push(msg);
+    if (recent.length > RECENT_MAX) recent.shift();
+    for (const w of watchers) w.write(`data: ${JSON.stringify(msg)}\n\n`);
+    res.writeHead(204); res.end();
+  });
+}
+
+function handleEvents(req, res) {
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+  res.write(`event: history\ndata: ${JSON.stringify(recent)}\n\n`);
+  watchers.add(res);
+  const ping = setInterval(() => res.write(': ping\n\n'), 15000);   // keeps phones / proxies from closing the stream
+  req.on('close', () => { clearInterval(ping); watchers.delete(res); });
+}
+
 // ---- static files
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'POST' && url.pathname === '/api/thresholds') return handleThresholds(req, res);
-  if (req.method === 'GET' && url.pathname === '/api/status') return sendJson(res, 200, { gemini: !!config().key });
+  if (req.method === 'POST' && url.pathname === '/api/ingest') return handleIngest(req, res);
+  if (req.method === 'GET' && url.pathname === '/api/events') return handleEvents(req, res);
+  if (req.method === 'GET' && url.pathname === '/api/status') return sendJson(res, 200, { gemini: !!config().key, wifi: true, lastIngestAt });
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
 
   let p = decodeURIComponent(url.pathname);
@@ -141,5 +179,6 @@ http.createServer((req, res) => {
     for (const a of addrs || [])
       if (a.family === 'IPv4' && !a.internal) console.log(`  Phone (same WiFi): http://${a.address}:${PORT}`);
   console.log(config().key ? `Gemini: key found, model ${config().model}` : 'Gemini: no key set (create dashboard/.env with GEMINI_API_KEY=...) - built-in plant profiles will be used');
+  console.log(config().deviceToken ? 'WiFi device: token required (DEVICE_TOKEN)' : 'WiFi device: WARNING no DEVICE_TOKEN set in .env - anyone on your network can post readings');
   console.log('Press Ctrl+C to stop.');
 });
